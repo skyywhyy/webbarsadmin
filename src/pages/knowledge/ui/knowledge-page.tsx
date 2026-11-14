@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, DragEvent as ReactDragEvent, MouseEvent } from 'react'
 import { Toast, useToast } from '@/shared/ui/toast'
-import { documentFromFile } from '../model/documents'
+import { documentFromFile, loadDocuments, loadJob, uploadDocument } from '../model/documents'
 import type { KnowledgeDocument } from '../model/documents'
 import styles from './knowledge-page.module.css'
 
@@ -11,6 +11,13 @@ const documentNouns: Partial<Record<Intl.LDMLPluralRule, string>> = {
   one: 'документ',
   few: 'документа',
   many: 'документов',
+}
+const statusLabels = {
+  queued: 'В очереди',
+  running: 'Обрабатывается',
+  succeeded: 'Готово',
+  failed: 'Ошибка обработки',
+  unavailable: 'Не удалось проверить статус',
 }
 
 function documentCount(count: number) {
@@ -24,13 +31,67 @@ export function KnowledgePage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
   const [isDraggingFile, setIsDraggingFile] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+  const [isLoadingDocuments, setIsLoadingDocuments] = useState(true)
+  const [documentsError, setDocumentsError] = useState('')
+  const [documentsVersion, setDocumentsVersion] = useState(0)
   const [isSyncing, setIsSyncing] = useState(true)
   const [confluenceConnected, setConfluenceConnected] = useState(false)
   const [confluenceError, setConfluenceError] = useState('')
   const [syncVersion, setSyncVersion] = useState(0)
   const fileInput = useRef<HTMLInputElement>(null)
-  const replacement = useRef<KnowledgeDocument | null>(null)
+  const pendingJobs = useRef(new Set<string>())
   const modal = useRef<HTMLDialogElement>(null)
+
+  const activeJobIds = documents.filter((item) => item.jobId && item.status !== 'succeeded' && item.status !== 'failed').map((item) => item.jobId).join(',')
+
+  useEffect(() => {
+    const controller = new AbortController()
+    loadDocuments(controller.signal)
+      .then((loaded) => {
+        if (controller.signal.aborted) return
+        const loadedIds = new Set(loaded.map((item) => item.jobId))
+        const pendingIds = new Set(pendingJobs.current)
+        setDocuments((current) => {
+          const pending = current.filter((item) => item.jobId && pendingIds.has(item.jobId) && !loadedIds.has(item.jobId))
+          const confluence = current.filter((item) => !item.jobId)
+          const serverDocuments = loaded.map((item) => ({ ...item, file: current.find((entry) => entry.jobId === item.jobId)?.file }))
+          return [...pending, ...serverDocuments, ...confluence]
+        })
+        loadedIds.forEach((id) => { if (id) pendingJobs.current.delete(id) })
+        setDocumentsError('')
+        setIsLoadingDocuments(false)
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setDocumentsError('Не удалось загрузить список документов.')
+          setIsLoadingDocuments(false)
+        }
+      })
+    return () => controller.abort()
+  }, [documentsVersion])
+
+  useEffect(() => {
+    if (!activeJobIds) return
+    const controller = new AbortController()
+    let checking = false
+    async function checkJobs() {
+      if (checking) return
+      checking = true
+      await Promise.all(activeJobIds.split(',').map(async (jobId) => {
+        try {
+          const job = await loadJob(jobId, controller.signal)
+          if (!controller.signal.aborted) setDocuments((current) => current.map((item) => item.jobId === jobId && item.status !== job.status ? { ...item, status: job.status } : item))
+        } catch {
+          if (!controller.signal.aborted) setDocuments((current) => current.map((item) => item.jobId === jobId && item.status !== 'unavailable' ? { ...item, status: 'unavailable' } : item))
+        }
+      }))
+      checking = false
+    }
+    void checkJobs()
+    const timer = window.setInterval(() => void checkJobs(), 5000)
+    return () => { controller.abort(); window.clearInterval(timer) }
+  }, [activeJobIds])
 
   useEffect(() => {
     if (documentToDelete) modal.current?.showModal()
@@ -52,31 +113,30 @@ export function KnowledgePage() {
     }
   }, [])
 
-  function chooseFile(item: KnowledgeDocument | null = null) {
-    replacement.current = item
+  function chooseFile() {
     fileInput.current?.click()
-  }
-
-  function putDocument(item: KnowledgeDocument, previous: KnowledgeDocument | null = null) {
-    setDocuments((current) => previous
-      ? current.map((entry) => entry.id === previous.id ? item : entry)
-      : [item, ...current])
   }
 
   function uploadFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.currentTarget.files?.[0]
     event.currentTarget.value = ''
-    const previous = replacement.current
-    replacement.current = null
-    if (file) addFile(file, previous)
+    if (file) void addFile(file)
   }
 
-  function addFile(file: File, previous: KnowledgeDocument | null = null) {
+  async function addFile(file: File) {
+    if (isUploading) return
     try {
-      putDocument(documentFromFile(file, previous?.id), previous)
-      showToast(previous ? 'Документ заменён' : 'Файл добавлен')
+      const document = documentFromFile(file)
+      setIsUploading(true)
+      const job = await uploadDocument(file)
+      pendingJobs.current.add(job.job_id)
+      setDocuments((current) => [{ ...document, jobId: job.job_id, status: 'queued' }, ...current])
+      setDocumentsVersion((value) => value + 1)
+      showToast('Файл отправлен на обработку')
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Не удалось добавить файл.', 'error')
+      showToast(error instanceof Error && error.message === 'Выберите непустой файл PDF, DOCX или TXT.' ? error.message : 'Не удалось загрузить файл. Попробуйте ещё раз.', 'error')
+    } finally {
+      setIsUploading(false)
     }
   }
 
@@ -97,7 +157,7 @@ export function KnowledgePage() {
       return
     }
 
-    addFile(files[0])
+    void addFile(files[0])
   }
 
   function closeMenu(event: MouseEvent<HTMLElement>) {
@@ -203,8 +263,8 @@ export function KnowledgePage() {
             <p id="file-formats">PDF, DOCX или TXT</p>
           </div>
           <input ref={fileInput} type="file" accept=".pdf,.docx,.txt" onChange={uploadFile} hidden />
-          <button type="button" className={styles.secondary} aria-describedby="file-formats" onClick={() => chooseFile()}>
-            Выбрать файл
+          <button type="button" className={styles.secondary} aria-describedby="file-formats" disabled={isUploading} onClick={chooseFile}>
+            {isUploading ? 'Загрузка…' : 'Выбрать файл'}
           </button>
         </div>
 
@@ -230,12 +290,15 @@ export function KnowledgePage() {
           <h2 id="knowledge-documents">Документы в базе знаний</h2>
           <span>{documentCount(documents.length)}</span>
         </header>
-        {documents.length === 0 ? (
+        {documentsError && !isLoadingDocuments && <div role="alert" className={styles.documentsError}><span>{documentsError}</span><button type="button" className={styles.secondary} onClick={() => { setIsLoadingDocuments(true); setDocumentsVersion((value) => value + 1) }}>Повторить</button></div>}
+        {documents.length === 0 && isLoadingDocuments ? (
+          <div className={styles.emptyState}><h3>Загружаем документы</h3></div>
+        ) : documents.length === 0 && !documentsError ? (
           <div className={styles.emptyState}>
             <h3>{isSyncing ? 'Загружаем документы' : 'Документов пока нет'}</h3>
             <p>{isSyncing ? 'Получаем список из Confluence.' : 'Загрузите документ с устройства или обновите список Confluence.'}</p>
           </div>
-        ) : (
+        ) : documents.length > 0 ? (
           <div className={styles.tableWrap}>
             <table className={styles.table} aria-labelledby="knowledge-documents">
               <colgroup><col /><col /><col /><col /></colgroup>
@@ -252,7 +315,7 @@ export function KnowledgePage() {
                   <tr key={item.id}>
                     <th scope="row">{item.name}<small>{item.description}</small></th>
                     <td>{dateFormat.format(item.date)}</td>
-                    <td>Добавлен</td>
+                    <td className={item.status === 'failed' || item.status === 'unavailable' ? styles.statusError : undefined} aria-live="polite">{item.status ? statusLabels[item.status] : 'Добавлен'}</td>
                     <td className={styles.actions}>
                       <details
                         className={styles.menu}
@@ -271,16 +334,13 @@ export function KnowledgePage() {
                           <button type="button" onClick={(event) => {
                             closeMenu(event)
                             openDocument(item)
-                          }}>Открыть документ</button>
-                          {!item.url && <button type="button" onClick={(event) => {
-                            closeMenu(event)
-                            chooseFile(item)
-                          }}>Заменить документ</button>}
+                          }} disabled={!item.url && !item.file}>Открыть документ</button>
+                          <button type="button" disabled>Заменить документ</button>
                           <button type="button" onClick={(event) => {
                             closeMenu(event)
                             setDeleteError('')
                             setDocumentToDelete(item)
-                          }} disabled={isSyncing || isDeleting}>Удалить документ</button>
+                          }} disabled={!item.url || isSyncing || isDeleting}>Удалить документ</button>
                         </div>
                       </details>
                     </td>
@@ -289,7 +349,7 @@ export function KnowledgePage() {
               </tbody>
             </table>
           </div>
-        )}
+        ) : null}
       </section>
 
       <dialog ref={modal} className={styles.dialog} onCancel={(event) => { if (isDeleting) event.preventDefault() }} onClose={() => setDocumentToDelete(null)} aria-labelledby="document-dialog-title">

@@ -1,3 +1,7 @@
+import { request } from '@/shared/api/client'
+
+export type DocumentStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'unavailable'
+
 export type KnowledgeDocument = {
   id: string
   name: string
@@ -6,6 +10,42 @@ export type KnowledgeDocument = {
   file?: Blob
   url?: string
   confluenceType?: 'page' | 'attachment'
+  jobId?: string
+  status?: DocumentStatus
+}
+
+type CreatedJob = { job_id: string }
+type Job = { status: Exclude<DocumentStatus, 'unavailable'> }
+type JobListItem = Job & { id: string; title: string; format: string; size_bytes: number | null; created_at: string }
+type JobPage = { items: JobListItem[]; total: number }
+
+export function uploadDocument(file: File) {
+  const body = new FormData()
+  body.append('file', file)
+  return request<CreatedJob>('/rag/documents', { method: 'POST', body })
+}
+
+export function loadJob(jobId: string, signal: AbortSignal) {
+  return request<Job>('/rag/jobs/' + encodeURIComponent(jobId), { signal })
+}
+
+export async function loadDocuments(signal: AbortSignal): Promise<KnowledgeDocument[]> {
+  const jobs: JobListItem[] = []
+  let page = 1
+  let result: JobPage
+  do {
+    result = await request<JobPage>('/rag/jobs?' + new URLSearchParams({ page: String(page), page_size: '100' }), { signal })
+    jobs.push(...result.items)
+    page += 1
+  } while (result.items.length > 0 && jobs.length < result.total)
+  return jobs.map((job) => ({
+    id: job.id,
+    jobId: job.id,
+    name: job.title,
+    description: [job.format.toUpperCase(), job.size_bytes === null ? '' : formatSize(job.size_bytes)].filter(Boolean).join(' · '),
+    date: Number.isFinite(Date.parse(job.created_at)) ? Date.parse(job.created_at) : Date.now(),
+    status: job.status,
+  }))
 }
 
 const fileTypes = new Map([
@@ -16,16 +56,18 @@ const fileTypes = new Map([
 
 const numberFormat = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 1 })
 
+function formatSize(bytes: number) {
+  return bytes >= 1024 * 1024
+    ? numberFormat.format(bytes / (1024 * 1024)) + ' МБ'
+    : bytes >= 1024 ? numberFormat.format(bytes / 1024) + ' КБ' : bytes + ' Б'
+}
+
 export function documentFromFile(file: File, id: string = crypto.randomUUID()): KnowledgeDocument {
   const extension = file.name.slice(file.name.lastIndexOf('.') + 1).toLowerCase()
   const type = file.name.includes('.') ? fileTypes.get(extension) : undefined
   if (!type || !file.size) throw new Error('Выберите непустой файл PDF, DOCX или TXT.')
 
-  const size = file.size >= 1024 * 1024
-    ? numberFormat.format(file.size / (1024 * 1024)) + ' МБ'
-    : file.size >= 1024
-      ? numberFormat.format(file.size / 1024) + ' КБ'
-      : file.size + ' Б'
+  const size = formatSize(file.size)
 
   return {
     id,

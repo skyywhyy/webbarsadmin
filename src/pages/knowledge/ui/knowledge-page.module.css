@@ -199,6 +199,16 @@
   white-space: nowrap;
 }
 
+.documentsError {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  color: var(--danger);
+}
+
 .table {
   width: 100%;
   table-layout: fixed;
@@ -207,11 +217,11 @@
 }
 
 .table col:first-child {
-  width: calc(100% * 502 / 1040);
+  width: calc(100% * 380 / 1040);
 }
 
 .table col:nth-child(2) {
-  width: calc(100% * 223 / 1040);
+  width: calc(100% * 345 / 1040);
 }
 
 .table col:last-child {
@@ -235,10 +245,7 @@
 
 .table tbody :is(th, td) {
   height: 82px;
-}
-
-.table tbody tr:first-child :is(th, td) {
-  height: 88px;
+  vertical-align: middle;
 }
 
 .table tbody th {
@@ -259,6 +266,10 @@
 .table .actions {
   padding-right: 0;
   text-align: end;
+}
+
+.table .statusError {
+  color: var(--danger);
 }
 
 .menu {
@@ -321,11 +332,15 @@
   font: 400 14px / 17px Inter, sans-serif;
 }
 
-.menuPanel button:hover {
+.menuPanel button:hover:not(:disabled) {
   background: var(--surface);
 }
 
-.menuPanel button:last-child {
+.menuPanel button:disabled {
+  color: var(--muted);
+}
+
+.menuPanel button:last-child:not(:first-child) {
   border-top: 1px solid #e3e7ea;
   color: var(--danger);
 }
