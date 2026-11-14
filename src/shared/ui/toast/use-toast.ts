@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
+export const toastDuration = 5_000
+
 export type ToastMessage = {
   id: number
   kind: 'success' | 'error'
@@ -15,7 +17,7 @@ export function useToast() {
 
     const timeout = window.setTimeout(() => {
       setToast((current) => current === toast ? null : current)
-    }, 5_000)
+    }, toastDuration)
 
     return () => window.clearTimeout(timeout)
   }, [toast])

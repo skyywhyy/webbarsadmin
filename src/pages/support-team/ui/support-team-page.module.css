@@ -402,6 +402,7 @@
   }
 
   .table tbody tr:nth-last-child(-n + 2) .actionList {
+    --menu-enter-y: 4px;
     inset: auto 0 100% auto;
   }
 }

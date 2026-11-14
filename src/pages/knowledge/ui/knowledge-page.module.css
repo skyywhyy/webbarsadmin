@@ -272,6 +272,34 @@
   color: var(--danger);
 }
 
+.processingStatus {
+  display: inline-block;
+  color: var(--muted);
+}
+
+@supports (background-clip: text) {
+  .processingStatus {
+    background: linear-gradient(100deg, #4e5f65 35%, #a8b5bb 50%, #4e5f65 65%);
+    background-size: 240% 100%;
+    background-clip: text;
+    color: transparent;
+    animation: statusShimmer 3.2s linear infinite;
+  }
+}
+
+@keyframes statusShimmer {
+  from { background-position: 150% 0; }
+  to { background-position: -150% 0; }
+}
+
+@media (prefers-reduced-motion: reduce), (forced-colors: active) {
+  .processingStatus {
+    background: none;
+    color: var(--muted);
+    animation: none;
+  }
+}
+
 .menu {
   position: relative;
 }
@@ -314,6 +342,7 @@
 }
 
 .table tr:last-child .menuPanel {
+  --menu-enter-y: 4px;
   inset: auto 0 100% auto;
 }
 
@@ -423,6 +452,7 @@
   }
 
   .menuPanel {
+    --menu-enter-y: 4px;
     inset: auto 0 100% auto;
   }
 }
