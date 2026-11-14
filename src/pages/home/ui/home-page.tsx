@@ -12,7 +12,12 @@ export function HomePage() {
             <select className={styles.periodSelect} disabled>
               <option>Нет доступных периодов</option>
             </select>
-            <span className={styles.periodChevron} aria-hidden="true">⌄</span>
+            <span className={styles.periodIcon} aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="5" width="18" height="16" rx="2" />
+                <path d="M7 3v4M17 3v4M3 10h18" />
+              </svg>
+            </span>
           </span>
         </label>
       </header>
