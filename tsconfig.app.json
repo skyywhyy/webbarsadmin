@@ -7,7 +7,7 @@
     "verbatimModuleSyntax": true, "moduleDetection": "force", "noEmit": true,
     "jsx": "react-jsx", "strict": true, "noUnusedLocals": true, "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true, "noUncheckedSideEffectImports": true,
-    "baseUrl": ".", "paths": {"@/*": ["./src/*"]}
+    "types": ["vite/client"], "paths": {"@/*": ["./src/*"]}
   },
   "include": ["src"]
 }
