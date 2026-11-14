@@ -1,0 +1,58 @@
+.sidebar {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-rows: 148px auto;
+  align-content: start;
+  width: 264px;
+  padding-inline: 24px 23px;
+  border-inline-end: 1px solid #dce3e6;
+  background: #fff;
+  font: 400 16px / 20px 'Golos Text', sans-serif;
+}
+
+.brand {
+  align-self: start;
+  justify-self: start;
+  margin-block-start: 28px;
+  margin-inline-start: 16px;
+}
+
+.brand img,
+.icon img {
+  display: block;
+}
+
+.navigation {
+  display: grid;
+  gap: 8px;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-height: 48px;
+  padding-inline: 12px;
+  border-radius: 4px;
+  color: #4e5f65;
+  text-decoration: none;
+}
+
+.item[aria-current='page'] {
+  background: #eaf0f1;
+  color: #111719;
+  font-weight: 500;
+}
+
+.brand:focus-visible,
+.item:focus-visible {
+  outline: 2px solid #4e5f65;
+  outline-offset: 2px;
+}
+
+.icon {
+  display: grid;
+  flex: 0 0 18px;
+  height: 18px;
+  place-items: center;
+}
