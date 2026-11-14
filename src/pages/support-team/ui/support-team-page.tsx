@@ -38,6 +38,7 @@ export function SupportTeamPage() {
   }, [page, revision])
 
   function changePage(next: number) {
+    if (next === page) return
     setLoading(true)
     setPage(next)
   }
@@ -97,3 +98,4 @@ export function SupportTeamPage() {
     </main>
   )
 }
+
