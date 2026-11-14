@@ -11,12 +11,14 @@ export type KnowledgeDocument = {
   url?: string
   confluenceType?: 'page' | 'attachment'
   jobId?: string
+  sourceId?: string
+  documentUrl?: string
   status?: DocumentStatus
 }
 
-type CreatedJob = { job_id: string }
+type CreatedJob = { job_id: string; source_id: string }
 type Job = { status: Exclude<DocumentStatus, 'unavailable'> }
-type JobListItem = Job & { id: string; title: string; format: string; size_bytes: number | null; created_at: string }
+type JobListItem = Job & { id: string; source_id: string; title: string; format: string; size_bytes: number | null; created_at: string; document_url: string | null }
 type JobPage = { items: JobListItem[]; total: number }
 
 export function uploadDocument(file: File) {
@@ -27,6 +29,27 @@ export function uploadDocument(file: File) {
 
 export function loadJob(jobId: string, signal: AbortSignal) {
   return request<Job>('/rag/jobs/' + encodeURIComponent(jobId), { signal })
+}
+
+export function replaceDocument(jobId: string, file: File) {
+  const body = new FormData()
+  body.append('file', file)
+  return request<CreatedJob>('/rag/jobs/' + encodeURIComponent(jobId), { method: 'PUT', body })
+}
+
+export function removeDocument(jobId: string) {
+  return request<void>('/rag/jobs/' + encodeURIComponent(jobId), { method: 'DELETE' })
+}
+
+function documentUrl(value: string | null) {
+  if (!value) return undefined
+  if (/^\/?file-service\//.test(value)) return '/api/' + value.replace(/^\//, '')
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : undefined
+  } catch {
+    return undefined
+  }
 }
 
 export async function loadDocuments(signal: AbortSignal): Promise<KnowledgeDocument[]> {
@@ -41,6 +64,8 @@ export async function loadDocuments(signal: AbortSignal): Promise<KnowledgeDocum
   return jobs.map((job) => ({
     id: job.id,
     jobId: job.id,
+    sourceId: job.source_id,
+    documentUrl: documentUrl(job.document_url),
     name: job.title,
     description: [job.format.toUpperCase(), job.size_bytes === null ? '' : formatSize(job.size_bytes)].filter(Boolean).join(' · '),
     date: Number.isFinite(Date.parse(job.created_at)) ? Date.parse(job.created_at) : Date.now(),
