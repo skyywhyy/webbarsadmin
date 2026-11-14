@@ -17,8 +17,7 @@
   margin-inline-start: 16px;
 }
 
-.brand img,
-.icon img {
+.brand img {
   display: block;
 }
 
@@ -44,6 +43,10 @@
   font-weight: 500;
 }
 
+.item:not([aria-current]):hover {
+  background: #f1f4f5;
+}
+
 .brand:focus-visible,
 .item:focus-visible {
   outline: 2px solid #4e5f65;
@@ -51,8 +54,9 @@
 }
 
 .icon {
-  display: grid;
   flex: 0 0 18px;
   height: 18px;
-  place-items: center;
+  background-color: currentColor;
+  mask-position: center;
+  mask-repeat: no-repeat;
 }

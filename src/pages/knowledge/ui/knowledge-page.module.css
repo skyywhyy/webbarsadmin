@@ -1,0 +1,53 @@
+.page {
+  min-width: 0;
+  padding: 65px clamp(24px, 4.167vw, 80px) 48px clamp(24px, 2.917vw, 56px);
+  color: #111719;
+  font: 400 15px / 1.2 'Golos Text', sans-serif;
+}
+
+.page h1 {
+  margin: 0 0 42px;
+  padding-bottom: 25px;
+  border-bottom: 1px solid #dce3e6;
+  font-size: clamp(34px, 3.4vw, 48px);
+  font-weight: 500;
+  line-height: 58px;
+}
+
+.page h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 500;
+}
+
+.page p {
+  color: #4e5f65;
+}
+
+.page table {
+  width: 100%;
+  border-collapse: collapse;
+  border-top: 1px solid #dce3e6;
+}
+
+.page :is(th, td) {
+  padding: 16px 12px 16px 0;
+  border-bottom: 1px solid #dce3e6;
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+
+.page thead th,
+.page small {
+  color: #4e5f65;
+  font-weight: 400;
+}
+
+.page tbody th {
+  font-weight: 500;
+}
+
+.page small {
+  display: block;
+  margin-top: 5px;
+}

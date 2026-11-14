@@ -1,9 +1,3 @@
-.layout {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  min-height: 100dvh;
-}
-
 .analytics {
   --ink: #101214;
   --line: #d8dfe2;
@@ -293,10 +287,6 @@
 }
 
 @media (max-width: 900px) {
-  .layout {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .analytics {
     padding-top: 28px;
   }
