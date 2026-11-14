@@ -1,34 +1,3 @@
-.login-page {
-  min-height: 100vh;
-  box-sizing: border-box;
-  padding: 32px 40px;
-  background: #fff;
-  color: #171b1d;
-  font-family: Arial, sans-serif;
-}
-
-.login-brand {
-  display: block;
-}
-
-.login-content {
-  width: min(100%, 400px);
-  margin: clamp(100px, 17vh, 190px) auto 0;
-}
-
-.login-content h1 {
-  margin: 0;
-  font-size: 36px;
-  line-height: 1.2;
-  font-weight: 600;
-}
-
-.login-description {
-  margin: 12px 0 36px;
-  color: #718693;
-  font-size: 15px;
-}
-
 .login-form {
   display: flex;
   flex-direction: column;
@@ -51,25 +20,9 @@
   font: inherit;
 }
 
-.login-form input:focus-visible,
-.login-form button:focus-visible {
+.login-form input:focus-visible {
   outline: 2px solid #526b79;
   outline-offset: 2px;
-}
-
-.login-form button {
-  height: 48px;
-  border: 0;
-  border-radius: 4px;
-  background: #171b1d;
-  color: white;
-  font: inherit;
-  font-size: 15px;
-  cursor: pointer;
-}
-
-.login-form button:hover {
-  background: #30383c;
 }
 
 .login-message {
@@ -78,22 +31,3 @@
   font-size: 14px;
   line-height: 1.5;
 }
-
-@media (max-width: 520px) {
-  .login-page {
-    padding: 28px 24px;
-  }
-
-  .login-content {
-    margin-top: 100px;
-  }
-
-  .login-content h1 {
-    font-size: 30px;
-  }
-}
-
-body:has(.login-page) {
-  margin: 0;
-}
-

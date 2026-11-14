@@ -1,0 +1,10 @@
+.content {
+  width: min(100%, 600px);
+  margin-top: clamp(80px, 22vh, 260px);
+  text-align: center;
+}
+
+.action {
+  width: min(100%, 400px);
+  margin-inline: auto;
+}

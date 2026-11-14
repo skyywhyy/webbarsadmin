@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { Navigate, useNavigate } from 'react-router'
 import barsLogo from '@/assets/bars-logo.svg'
 import { ApiError, getToken, request, setToken } from '@/shared/api/client'
+import '@/shared/ui/entry-page.css'
 import './login-page.css'
 
 type LoginResponse = { access_token: string; token_type: string }
@@ -37,18 +38,18 @@ export function LoginPage() {
   }
 
   return (
-    <main className="login-page">
-      <img className="login-brand" src={barsLogo} alt="БАРС Груп" />
-      <section className="login-content">
+    <main className="entry-page">
+      <img className="entry-brand" src={barsLogo} alt="БАРС Груп" />
+      <section className="entry-content">
         <h1>Вход в систему</h1>
-        <p className="login-description">Панель управления службы поддержки</p>
+        <p className="entry-description">Панель управления службы поддержки</p>
         <form className="login-form" onSubmit={handleSubmit}>
           <label htmlFor="email">Электронная почта</label>
           <input id="email" name="email" type="email" autoComplete="username" required />
           <label htmlFor="password">Пароль</label>
           <input id="password" name="password" type="password" autoComplete="current-password" required />
           {error && <p className="login-message" role="alert">{error}</p>}
-          <button type="submit" disabled={loading}>{loading ? 'Вход…' : 'Войти'}</button>
+          <button className="entry-action" type="submit" disabled={loading}>{loading ? 'Вход…' : 'Войти'}</button>
         </form>
       </section>
     </main>
