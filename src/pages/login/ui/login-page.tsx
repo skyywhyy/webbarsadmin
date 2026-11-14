@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Navigate, useNavigate } from 'react-router'
+import barsLogo from '@/assets/bars-logo.svg'
 import { ApiError, getToken, request, setToken } from '@/shared/api/client'
 import './login-page.css'
 
@@ -37,7 +38,7 @@ export function LoginPage() {
 
   return (
     <main className="login-page">
-      <div className="login-brand" aria-label="БАРС Груп">БАРС <span>ГРУП</span></div>
+      <img className="login-brand" src={barsLogo} alt="БАРС Груп" />
       <section className="login-content">
         <h1>Вход в систему</h1>
         <p className="login-description">Панель управления службы поддержки</p>

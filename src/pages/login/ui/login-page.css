@@ -8,16 +8,7 @@
 }
 
 .login-brand {
-  width: max-content;
-  font-size: 24px;
-  font-weight: 700;
-  line-height: 0.8;
-}
-
-.login-brand span {
   display: block;
-  margin-left: 39px;
-  font-size: 11px;
 }
 
 .login-content {
@@ -105,3 +96,4 @@
 body:has(.login-page) {
   margin: 0;
 }
+
