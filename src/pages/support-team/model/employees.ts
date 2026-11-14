@@ -26,3 +26,7 @@ export function createEmployee(telegramId: number, firstName: string, lastName: 
     body: JSON.stringify({ telegram_id: telegramId, first_name: firstName || null, last_name: lastName || null }),
   })
 }
+
+export function deleteEmployee(id: string) {
+  return request<void>('/employees/' + encodeURIComponent(id), { method: 'DELETE' })
+}
