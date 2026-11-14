@@ -11,7 +11,7 @@
   font: 400 15px / 1.2 'Golos Text', sans-serif;
 }
 
-.page :is(h1, h2, h3, h4, p) {
+.page :is(h1, h2, h3, p) {
   margin: 0;
 }
 
@@ -62,16 +62,13 @@
   background: var(--surface);
 }
 
-.upload h3,
-.integrations h3,
-.integration h4 {
+.upload h3 {
   font-size: 16px;
   font-weight: 500;
   line-height: 19px;
 }
 
-.upload p,
-.integration p {
+.upload p {
   margin-top: 11px;
   color: var(--muted);
 }
@@ -87,21 +84,12 @@
   outline-offset: 2px;
 }
 
-.page :is(.primary, .secondary, .danger) {
+.page :is(.secondary, .danger) {
   min-height: 46px;
   padding-inline: 16px;
   border: 0;
   border-radius: 4px;
   font: 500 14px / 17px Inter, sans-serif;
-}
-
-.page .primary {
-  background: var(--ink);
-  color: #fff;
-}
-
-.primary:hover {
-  background: #303b3f;
 }
 
 .page .secondary {
@@ -116,32 +104,6 @@
   align-self: center;
   width: 208px;
   margin-bottom: 6px;
-}
-
-.integrations {
-  margin-top: 32px;
-}
-
-.integration {
-  box-sizing: border-box;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  min-height: 80px;
-  margin-top: 13px;
-  padding: 12px 27px 12px 23px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-}
-
-.integration p {
-  margin-top: 6px;
-}
-
-.integration button {
-  width: 208px;
 }
 
 .documentList {
@@ -371,12 +333,6 @@
   justify-content: flex-end;
   gap: 12px;
   margin-top: 24px;
-}
-
-.page .primary:disabled {
-  background: var(--surface);
-  color: var(--muted);
-  cursor: not-allowed;
 }
 
 .page .danger {
