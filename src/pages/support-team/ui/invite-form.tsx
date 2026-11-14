@@ -3,11 +3,7 @@ import type { FormEvent } from 'react'
 import { request } from '@/shared/api/client'
 import styles from './invite-form.module.css'
 
-type Props = {
-  onClose: () => void
-}
-
-export function InviteForm({ onClose }: Props) {
+export function InviteForm() {
   const [mode, setMode] = useState<'one' | 'many'>('one')
   const [count, setCount] = useState('2')
   const [link, setLink] = useState('')
@@ -47,22 +43,26 @@ export function InviteForm({ onClose }: Props) {
     } catch {
       linkInput.current?.focus()
       linkInput.current?.select()
-      setCopyMessage('Не удалось скопировать ссылку. Скопируйте её из поля.')
+      setCopyMessage('Не удалось скопировать ссылку. Выделите её и скопируйте вручную.')
     }
   }
 
   if (link) {
     return (
       <div className={styles.content}>
-        <label className={styles.field}>
-          Ссылка на приглашение
-          <input ref={linkInput} value={link} readOnly onFocus={(event) => event.currentTarget.select()} />
-        </label>
-        <p className={styles.status} role="status">{copyMessage}</p>
-        <div className={styles.actions}>
-          <button type="button" className={styles.secondary} onClick={() => { setLink(''); setCopyMessage('') }}>Назад</button>
-          <button type="button" className={styles.primary} onClick={copyLink}>Копировать</button>
+        <div className={styles.inviteLink}>
+          <label className={styles.inviteLinkLabel} htmlFor="invite-link">Ссылка на приглашение</label>
+          <div className={styles.inviteLinkRow}>
+            <input id="invite-link" ref={linkInput} className={styles.inviteLinkInput} value={link} readOnly onFocus={(event) => event.currentTarget.select()} />
+            <button type="button" className={styles.copyButton} onClick={copyLink} aria-label="Скопировать ссылку" title="Скопировать ссылку">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="8" y="8" width="11" height="11" rx="2" />
+                <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+              </svg>
+            </button>
+          </div>
         </div>
+        <p className={styles.status} role="status">{copyMessage}</p>
       </div>
     )
   }
@@ -108,7 +108,6 @@ export function InviteForm({ onClose }: Props) {
       )}
       {error && <p className={styles.error} role="alert">{error}</p>}
       <div className={styles.actions}>
-        <button type="button" className={styles.secondary} onClick={onClose}>Отмена</button>
         <button type="submit" className={styles.primary} disabled={loading}>{loading ? 'Создание…' : 'Создать ссылку'}</button>
       </div>
     </form>

@@ -40,13 +40,17 @@ export function EmployeeDialog({ kind, onClose, onAdded }: Props) {
   }
 
   return (
-    <dialog ref={dialog} onClose={onClose} className={styles.dialog} aria-labelledby="employee-dialog-title">
+    <dialog ref={dialog} onClose={onClose} className={`${styles.dialog} ${styles.employeeDialog}`} aria-labelledby="employee-dialog-title">
       <header className={styles.dialogHeader}>
         <h2 id="employee-dialog-title">{kind === 'invite' ? 'Пригласить сотрудника' : 'Добавить пользователя'}</h2>
-        <button className={styles.iconButton} type="button" onClick={() => dialog.current?.close()} aria-label="Закрыть">×</button>
+        <button className={`${styles.iconButton} ${styles.dialogClose}`} type="button" onClick={() => dialog.current?.close()} aria-label="Закрыть">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <path d="M1 1l12 12M13 1L1 13" />
+          </svg>
+        </button>
       </header>
       {kind === 'invite' ? (
-        <InviteForm onClose={() => dialog.current?.close()} />
+        <InviteForm />
       ) : (
         <form className={styles.employeeForm} onSubmit={submit}>
           <div className={styles.nameFields}>

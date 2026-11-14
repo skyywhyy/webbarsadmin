@@ -105,6 +105,56 @@
   display: none;
 }
 
+.inviteLink {
+  display: grid;
+  gap: 16px;
+}
+
+.inviteLinkLabel {
+  font-weight: 500;
+}
+
+.inviteLinkRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.inviteLinkInput {
+  box-sizing: border-box;
+  min-width: 0;
+  flex: 1;
+  height: 46px;
+  padding: 0 16px;
+  border: 1px solid #dce3e6;
+  border-radius: 4px;
+  color: #111719;
+  font: inherit;
+}
+
+.copyButton {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #111719;
+  cursor: pointer;
+}
+
+.copyButton:hover {
+  background: #f1f4f5;
+}
+
+.copyButton:focus-visible {
+  outline: 2px solid #4e5f65;
+  outline-offset: 2px;
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;
@@ -120,11 +170,6 @@
   border-radius: 4px;
   font: 500 14px Inter, sans-serif;
   cursor: pointer;
-}
-
-.actions .secondary {
-  background: #fff;
-  color: #111719;
 }
 
 .actions .primary {

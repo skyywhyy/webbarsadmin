@@ -55,7 +55,7 @@ export function SupportTeamPage() {
 
   return (
     <main className={styles.page}>
-      <header className={styles.heading}><h1>Команда поддержки</h1></header>
+      <header className={styles.heading}><h1>Список клиентов</h1></header>
       <div className={styles.toolbar}>
         <button type="button" className={styles.secondaryButton} onClick={() => setDialog('invite')}>Пригласить по ссылке</button>
         <button type="button" className={styles.primaryButton} onClick={() => setDialog('add')}>Добавить пользователя</button>
