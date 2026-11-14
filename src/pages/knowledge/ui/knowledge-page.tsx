@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, DragEvent as ReactDragEvent, MouseEvent } from 'react'
 import { Toast, useToast } from '@/shared/ui/toast'
-import { documentFromFile, loadDocuments, loadJob, uploadDocument } from '../model/documents'
+import { documentFromFile, loadDocuments, loadJob, removeDocument, replaceDocument, uploadDocument } from '../model/documents'
 import type { KnowledgeDocument } from '../model/documents'
 import styles from './knowledge-page.module.css'
 
@@ -40,6 +40,9 @@ export function KnowledgePage() {
   const [confluenceError, setConfluenceError] = useState('')
   const [syncVersion, setSyncVersion] = useState(0)
   const fileInput = useRef<HTMLInputElement>(null)
+  const replacementInput = useRef<HTMLInputElement>(null)
+  const replacementTarget = useRef<KnowledgeDocument | null>(null)
+  const mutationInProgress = useRef(false)
   const pendingJobs = useRef(new Set<string>())
   const modal = useRef<HTMLDialogElement>(null)
 
@@ -54,8 +57,9 @@ export function KnowledgePage() {
         const pendingIds = new Set(pendingJobs.current)
         setDocuments((current) => {
           const pending = current.filter((item) => item.jobId && pendingIds.has(item.jobId) && !loadedIds.has(item.jobId))
+          const pendingSources = new Set(pending.map((item) => item.sourceId).filter(Boolean))
           const confluence = current.filter((item) => !item.jobId)
-          const serverDocuments = loaded.map((item) => ({ ...item, file: current.find((entry) => entry.jobId === item.jobId)?.file }))
+          const serverDocuments = loaded.filter((item) => !item.sourceId || !pendingSources.has(item.sourceId)).map((item) => ({ ...item, file: current.find((entry) => entry.jobId === item.jobId)?.file }))
           return [...pending, ...serverDocuments, ...confluence]
         })
         loadedIds.forEach((id) => { if (id) pendingJobs.current.delete(id) })
@@ -81,7 +85,10 @@ export function KnowledgePage() {
       await Promise.all(activeJobIds.split(',').map(async (jobId) => {
         try {
           const job = await loadJob(jobId, controller.signal)
-          if (!controller.signal.aborted) setDocuments((current) => current.map((item) => item.jobId === jobId && item.status !== job.status ? { ...item, status: job.status } : item))
+          if (!controller.signal.aborted) {
+            setDocuments((current) => current.map((item) => item.jobId === jobId && item.status !== job.status ? { ...item, status: job.status } : item))
+            if (job.status === 'succeeded' || job.status === 'failed') setDocumentsVersion((value) => value + 1)
+          }
         } catch {
           if (!controller.signal.aborted) setDocuments((current) => current.map((item) => item.jobId === jobId && item.status !== 'unavailable' ? { ...item, status: 'unavailable' } : item))
         }
@@ -123,19 +130,38 @@ export function KnowledgePage() {
     if (file) void addFile(file)
   }
 
-  async function addFile(file: File) {
-    if (isUploading) return
+  function chooseReplacement(item: KnowledgeDocument) {
+    replacementTarget.current = item
+    replacementInput.current?.click()
+  }
+
+  function uploadReplacement(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0]
+    const previous = replacementTarget.current
+    event.currentTarget.value = ''
+    replacementTarget.current = null
+    if (file && previous) void addFile(file, previous)
+  }
+
+  async function addFile(file: File, previous?: KnowledgeDocument) {
+    if (mutationInProgress.current) return
     try {
       const document = documentFromFile(file)
+      mutationInProgress.current = true
       setIsUploading(true)
-      const job = await uploadDocument(file)
+      const job = previous?.jobId ? await replaceDocument(previous.jobId, file) : await uploadDocument(file)
+      if (previous?.jobId) pendingJobs.current.delete(previous.jobId)
       pendingJobs.current.add(job.job_id)
-      setDocuments((current) => [{ ...document, jobId: job.job_id, status: 'queued' }, ...current])
+      setDocuments((current) => [
+        { ...document, id: job.job_id, jobId: job.job_id, sourceId: job.source_id, status: 'queued' },
+        ...current.filter((item) => !previous || (item.id !== previous.id && (!previous.sourceId || item.sourceId !== previous.sourceId))),
+      ])
       setDocumentsVersion((value) => value + 1)
-      showToast('Файл отправлен на обработку')
+      showToast(previous ? 'Новый файл отправлен на обработку' : 'Файл отправлен на обработку')
     } catch (error) {
-      showToast(error instanceof Error && error.message === 'Выберите непустой файл PDF, DOCX или TXT.' ? error.message : 'Не удалось загрузить файл. Попробуйте ещё раз.', 'error')
+      showToast(error instanceof Error && error.message === 'Выберите непустой файл PDF, DOCX или TXT.' ? error.message : previous ? 'Не удалось заменить документ. Попробуйте ещё раз.' : 'Не удалось загрузить файл. Попробуйте ещё раз.', 'error')
     } finally {
+      mutationInProgress.current = false
       setIsUploading(false)
     }
   }
@@ -196,8 +222,9 @@ export function KnowledgePage() {
   }, [syncVersion])
 
   function openDocument(item: KnowledgeDocument) {
-    if (item.url) {
-      window.open(item.url, '_blank', 'noopener,noreferrer')
+    const documentUrl = item.documentUrl || item.url
+    if (documentUrl) {
+      window.open(documentUrl, '_blank', 'noopener,noreferrer')
       return
     }
     if (!item.file) return
@@ -212,10 +239,15 @@ export function KnowledgePage() {
   }
 
   async function deleteDocument(item: KnowledgeDocument) {
+    if (mutationInProgress.current) return
+    mutationInProgress.current = true
     setIsDeleting(true)
     setDeleteError('')
     try {
-      if (item.url) {
+      if (item.jobId) {
+        await removeDocument(item.jobId)
+        pendingJobs.current.delete(item.jobId)
+      } else if (item.url) {
         if (!item.confluenceType || !item.id.startsWith('confluence:')) throw new Error('Не удалось определить тип документа Confluence.')
         const response = await fetch('/local-confluence/delete', {
           method: 'POST',
@@ -224,13 +256,15 @@ export function KnowledgePage() {
         })
         const result = await response.json() as { error?: string; deleted?: boolean }
         if (!response.ok || !result.deleted) throw new Error(result.error || 'Не удалось удалить документ из Confluence.')
-      }
-      setDocuments((current) => current.filter((entry) => entry.id !== item.id))
+      } else throw new Error('Не удалось определить документ для удаления.')
+      setDocuments((current) => current.filter((entry) => entry.id !== item.id && (!item.sourceId || entry.sourceId !== item.sourceId)))
+      setDocumentsVersion((value) => value + 1)
       modal.current?.close()
       showToast(item.url ? 'Документ перемещён в корзину Confluence' : 'Документ удалён')
     } catch (error) {
-      setDeleteError(error instanceof Error ? error.message : 'Не удалось удалить документ.')
+      setDeleteError(!item.jobId && error instanceof Error ? error.message : 'Не удалось удалить документ. Попробуйте ещё раз.')
     } finally {
+      mutationInProgress.current = false
       setIsDeleting(false)
     }
   }
@@ -263,7 +297,8 @@ export function KnowledgePage() {
             <p id="file-formats">PDF, DOCX или TXT</p>
           </div>
           <input ref={fileInput} type="file" accept=".pdf,.docx,.txt" onChange={uploadFile} hidden />
-          <button type="button" className={styles.secondary} aria-describedby="file-formats" disabled={isUploading} onClick={chooseFile}>
+          <input ref={replacementInput} type="file" accept=".pdf,.docx,.txt" onChange={uploadReplacement} hidden />
+          <button type="button" className={styles.secondary} aria-describedby="file-formats" disabled={isUploading || isDeleting} onClick={chooseFile}>
             {isUploading ? 'Загрузка…' : 'Выбрать файл'}
           </button>
         </div>
@@ -334,13 +369,16 @@ export function KnowledgePage() {
                           <button type="button" onClick={(event) => {
                             closeMenu(event)
                             openDocument(item)
-                          }} disabled={!item.url && !item.file}>Открыть документ</button>
-                          <button type="button" disabled>Заменить документ</button>
+                          }} disabled={!item.documentUrl && !item.url && !item.file}>Открыть документ</button>
+                          <button type="button" onClick={(event) => {
+                            closeMenu(event)
+                            chooseReplacement(item)
+                          }} disabled={!item.jobId || isUploading || isDeleting}>Заменить документ</button>
                           <button type="button" onClick={(event) => {
                             closeMenu(event)
                             setDeleteError('')
                             setDocumentToDelete(item)
-                          }} disabled={!item.url || isSyncing || isDeleting}>Удалить документ</button>
+                          }} disabled={(!item.jobId && !item.url) || (!item.jobId && isSyncing) || isUploading || isDeleting}>Удалить документ</button>
                         </div>
                       </details>
                     </td>
