@@ -8,9 +8,7 @@ export type KnowledgeDocument = {
   description: string
   date: number
   file?: Blob
-  url?: string
-  confluenceType?: 'page' | 'attachment'
-  jobId?: string
+  jobId: string
   sourceId?: string
   documentUrl?: string
   status?: DocumentStatus
@@ -87,7 +85,7 @@ function formatSize(bytes: number) {
     : bytes >= 1024 ? numberFormat.format(bytes / 1024) + ' КБ' : bytes + ' Б'
 }
 
-export function documentFromFile(file: File, id: string = crypto.randomUUID()): KnowledgeDocument {
+export function documentFromFile(file: File) {
   const extension = file.name.slice(file.name.lastIndexOf('.') + 1).toLowerCase()
   const type = file.name.includes('.') ? fileTypes.get(extension) : undefined
   if (!type || !file.size) throw new Error('Выберите непустой файл PDF, DOCX или TXT.')
@@ -95,7 +93,6 @@ export function documentFromFile(file: File, id: string = crypto.randomUUID()): 
   const size = formatSize(file.size)
 
   return {
-    id,
     name: file.name,
     description: extension.toUpperCase() + ' · ' + size,
     date: Date.now(),
