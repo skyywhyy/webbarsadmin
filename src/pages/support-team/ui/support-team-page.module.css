@@ -216,7 +216,9 @@
   position: absolute;
   inset: 100% 0 auto auto;
   z-index: 1;
+  box-sizing: border-box;
   width: 228px;
+  padding: 8px;
   border: 1px solid var(--line);
   border-radius: 4px;
   background: #fff;
@@ -227,7 +229,7 @@
   display: block;
   width: 100%;
   min-height: 43px;
-  padding-inline: 16px;
+  padding-inline: 8px;
   border: 0;
   background: transparent;
   text-align: start;
