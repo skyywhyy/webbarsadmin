@@ -56,6 +56,12 @@ export function SupportTeamPage() {
     showToast('Сотрудник добавлен')
   }
 
+  function handleEmployeeUpdated(employee: Employee) {
+    setAction(null)
+    setEmployees((current) => current.map((item) => item.id === employee.id ? employee : item))
+    showToast('Данные сотрудника обновлены')
+  }
+
   async function handleEmployeeDeleted(employee: Employee) {
     setAction(null)
     await removeRow(employee.id, () => {
@@ -133,7 +139,7 @@ export function SupportTeamPage() {
       </section>
       <Toast message={toast} />
       {dialog && <EmployeeDialog kind={dialog} onClose={() => setDialog(null)} onAdded={handleEmployeeAdded} />}
-      {action && <EmployeeActionDialog action={action} onClose={() => setAction(null)} onDeleted={() => void handleEmployeeDeleted(action.employee)} />}
+      {action && <EmployeeActionDialog action={action} onClose={() => setAction(null)} onDeleted={() => void handleEmployeeDeleted(action.employee)} onUpdated={handleEmployeeUpdated} />}
     </main>
   )
 }
