@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import type { FormEvent } from 'react'
+import { request } from '@/shared/api/client'
 import styles from './invite-form.module.css'
 
 type Props = {
@@ -11,12 +12,32 @@ export function InviteForm({ onClose }: Props) {
   const [count, setCount] = useState('2')
   const [link, setLink] = useState('')
   const [copyMessage, setCopyMessage] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
   const linkInput = useRef<HTMLInputElement>(null)
 
-  function generateLink(event: FormEvent<HTMLFormElement>) {
+  async function generateLink(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setLink('https://example.com/invite/' + crypto.randomUUID())
-    setCopyMessage('')
+    const data = new FormData(event.currentTarget)
+    setLoading(true)
+    setError('')
+    try {
+      const result = await request<{ link: string }>('/invites', {
+        method: 'POST',
+        body: JSON.stringify({
+          count_of_use: mode === 'one' ? 1 : Number(count),
+          first_name: mode === 'one' ? String(data.get('firstName')).trim() || null : null,
+          last_name: mode === 'one' ? String(data.get('lastName')).trim() || null : null,
+        }),
+      })
+      if (!result.link) throw new Error('Ссылка не получена')
+      setLink(result.link)
+      setCopyMessage('')
+    } catch {
+      setError('Не удалось создать ссылку. Попробуйте ещё раз.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function copyLink() {
@@ -85,11 +106,14 @@ export function InviteForm({ onClose }: Props) {
           <p className={styles.hint}>Ссылка будет рассчитана на указанное количество сотрудников.</p>
         </>
       )}
+      {error && <p className={styles.error} role="alert">{error}</p>}
       <div className={styles.actions}>
         <button type="button" className={styles.secondary} onClick={onClose}>Отмена</button>
-        <button type="submit" className={styles.primary}>Создать ссылку</button>
+        <button type="submit" className={styles.primary} disabled={loading}>{loading ? 'Создание…' : 'Создать ссылку'}</button>
       </div>
     </form>
   )
 }
+
+
 
