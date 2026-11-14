@@ -33,5 +33,6 @@ export async function request<T>(path: string, options: RequestInit = {}, authen
     }
     throw new ApiError(response.status, 'Ошибка запроса')
   }
+  if (response.status === 204) return undefined as T
   return response.json() as Promise<T>
 }

@@ -97,6 +97,10 @@
   width: calc(100% * 335 / 1040);
 }
 
+.actionColumn {
+  width: 48px;
+}
+
 
 
 .table tr {
