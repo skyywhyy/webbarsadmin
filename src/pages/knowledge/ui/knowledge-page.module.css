@@ -191,7 +191,6 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 18px;
-  padding-right: min(14%, 146px);
   margin-bottom: 21px;
 }
 
