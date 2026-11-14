@@ -8,7 +8,7 @@ import styles from './sidebar.module.css'
 
 const navItems: ReadonlyArray<{ label: string; icon: string; to?: string }> = [
   { label: 'Аналитика', icon: analyticsIcon, to: '/' },
-  { label: 'Сотрудники', icon: employeesIcon },
+  { label: 'Сотрудники', icon: employeesIcon, to: '/employees' },
   { label: 'База знаний', icon: knowledgeIcon },
 ]
 
@@ -44,3 +44,4 @@ export function Sidebar() {
     </aside>
   )
 }
+
