@@ -97,9 +97,7 @@
   width: calc(100% * 335 / 1040);
 }
 
-.table col:last-child {
-  width: 44px;
-}
+
 
 .table tr {
   border-bottom: 1px solid var(--line);
@@ -359,3 +357,4 @@
     grid-template-columns: 1fr;
   }
 }
+

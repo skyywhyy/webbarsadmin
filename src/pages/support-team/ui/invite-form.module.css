@@ -138,3 +138,9 @@
     grid-template-columns: 1fr;
   }
 }
+
+.error {
+  margin: 0;
+  color: #a03535;
+}
+

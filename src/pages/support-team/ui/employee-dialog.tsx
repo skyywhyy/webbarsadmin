@@ -1,113 +1,65 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import type { Employee } from '../model/employees'
+import { createEmployee } from '../model/employees'
 import { InviteForm } from './invite-form'
 import styles from './support-team-page.module.css'
 
-export type EmployeeDialogState =
-  | { kind: 'invite' | 'add' }
-  | { kind: 'edit' | 'delete'; employee: Employee }
-
 type Props = {
-  state: EmployeeDialogState
-  employees: Employee[]
-  saveError: string
+  kind: 'invite' | 'add'
   onClose: () => void
-  onSave: (employees: Employee[], message: string) => void
+  onAdded: () => void
 }
 
-const titles = {
-  invite: 'Пригласить сотрудника',
-  add: 'Добавить пользователя',
-  edit: 'Данные сотрудника',
-  delete: 'Удалить сотрудника?',
-}
-
-export function EmployeeDialog({ state, employees, saveError, onClose, onSave }: Props) {
+export function EmployeeDialog({ kind, onClose, onAdded }: Props) {
   const dialog = useRef<HTMLDialogElement>(null)
   const [error, setError] = useState('')
-  const employee = 'employee' in state ? state.employee : undefined
-  const isEditing = state.kind === 'edit'
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     dialog.current?.showModal()
   }, [])
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const data = new FormData(event.currentTarget)
-    const firstName = String(data.get('firstName')).trim()
-    const lastName = String(data.get('lastName')).trim()
-    const username = String(data.get('username')).trim().replace(/^@/, '')
-
-    if (!firstName || !lastName || !/^[A-Za-z0-9_]{5,32}$/.test(username)) {
-      setError('Укажите имя, фамилию и Telegram username из 5–32 латинских букв, цифр или знаков подчёркивания.')
+    const telegramId = Number(data.get('telegramId'))
+    if (!Number.isSafeInteger(telegramId) || telegramId <= 0) {
+      setError('Введите корректный числовой Telegram ID.')
       return
     }
-
-    if (employees.some((entry) => entry.id !== employee?.id && entry.username.toLowerCase() === username.toLowerCase())) {
-      setError('Сотрудник с таким Telegram username уже есть в списке.')
-      return
+    setLoading(true)
+    setError('')
+    try {
+      await createEmployee(telegramId, String(data.get('firstName')).trim(), String(data.get('lastName')).trim())
+      onAdded()
+    } catch {
+      setError('Не удалось добавить сотрудника. Проверьте данные и попробуйте снова.')
+    } finally {
+      setLoading(false)
     }
-
-    const next = employee
-      ? employees.map((entry) => entry.id === employee.id ? { ...entry, firstName, lastName, username } : entry)
-      : [{ id: crypto.randomUUID(), firstName, lastName, username }, ...employees]
-    onSave(next, isEditing ? 'Данные сотрудника сохранены' : 'Сотрудник добавлен')
   }
 
   return (
     <dialog ref={dialog} onClose={onClose} className={styles.dialog} aria-labelledby="employee-dialog-title">
       <header className={styles.dialogHeader}>
-        <h2 id="employee-dialog-title">{titles[state.kind]}</h2>
-        <button
-          className={styles.iconButton}
-          type="button"
-          onClick={() => dialog.current?.close()}
-          aria-label="Закрыть"
-        >
-          ×
-        </button>
+        <h2 id="employee-dialog-title">{kind === 'invite' ? 'Пригласить сотрудника' : 'Добавить пользователя'}</h2>
+        <button className={styles.iconButton} type="button" onClick={() => dialog.current?.close()} aria-label="Закрыть">×</button>
       </header>
-      {saveError && <p className={styles.error} role="alert">{saveError}</p>}
-      {state.kind === 'invite' ? (
+      {kind === 'invite' ? (
         <InviteForm onClose={() => dialog.current?.close()} />
-      ) : state.kind === 'delete' && employee ? (
-        <>
-          <p>{employee.firstName} {employee.lastName} · @{employee.username}</p>
-          <div className={styles.dialogActions}>
-            <button className={styles.secondaryButton} onClick={() => dialog.current?.close()}>Отмена</button>
-            <button
-              className={styles.deleteButton}
-              onClick={() => onSave(employees.filter((entry) => entry.id !== employee.id), 'Сотрудник удалён')}
-            >
-              Удалить сотрудника
-            </button>
-          </div>
-        </>
       ) : (
         <form className={styles.employeeForm} onSubmit={submit}>
           <div className={styles.nameFields}>
-            <label>
-              Имя
-              <input name="firstName" placeholder="Введите имя" defaultValue={employee?.firstName} maxLength={100} required />
-            </label>
-            <label>
-              Фамилия
-              <input name="lastName" placeholder="Введите фамилию" defaultValue={employee?.lastName} maxLength={100} required />
-            </label>
+            <label>Имя<input name="firstName" placeholder="Введите имя" maxLength={100} /></label>
+            <label>Фамилия<input name="lastName" placeholder="Введите фамилию" maxLength={100} /></label>
           </div>
-          <label>
-            Username пользователя Telegram
-            <input name="username" placeholder="@username" defaultValue={employee && '@' + employee.username} maxLength={33} required />
-          </label>
+          <label>Telegram ID<input name="telegramId" inputMode="numeric" pattern="[0-9]+" placeholder="Числовой ID пользователя" required /></label>
           {error && <p className={styles.error} role="alert">{error}</p>}
           <div className={styles.dialogActions}>
-            <button className={styles.primaryButton} type="submit">{isEditing ? 'Сохранить' : 'Добавить'}</button>
+            <button className={styles.primaryButton} type="submit" disabled={loading}>{loading ? 'Добавление…' : 'Добавить'}</button>
           </div>
         </form>
       )}
     </dialog>
   )
 }
-
