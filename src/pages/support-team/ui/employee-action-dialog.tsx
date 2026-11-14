@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
+import type { FormEvent } from 'react'
 import { useAnimatedDialog } from '@/shared/ui/dialog'
-import { deleteEmployee } from '../model/employees'
+import { deleteEmployee, updateEmployee } from '../model/employees'
 import type { Employee } from '../model/employees'
 import styles from './support-team-page.module.css'
 
@@ -8,9 +9,10 @@ type Props = {
   action: { kind: 'edit' | 'delete'; employee: Employee }
   onClose: () => void
   onDeleted: () => void
+  onUpdated: (employee: Employee) => void
 }
 
-export function EmployeeActionDialog({ action, onClose, onDeleted }: Props) {
+export function EmployeeActionDialog({ action, onClose, onDeleted, onUpdated }: Props) {
   const { dialog, closeDialog } = useAnimatedDialog()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -19,6 +21,22 @@ export function EmployeeActionDialog({ action, onClose, onDeleted }: Props) {
   useEffect(() => {
     dialog.current?.showModal()
   }, [dialog])
+
+  async function handleSave(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (loading) return
+    const data = new FormData(event.currentTarget)
+    setLoading(true)
+    setError('')
+    try {
+      const updated = await updateEmployee(employee.id, String(data.get('firstName') ?? ''), String(data.get('lastName') ?? ''))
+      await closeDialog()
+      onUpdated(updated)
+    } catch {
+      setError('Не удалось сохранить изменения. Попробуйте ещё раз.')
+      setLoading(false)
+    }
+  }
 
   async function handleDelete() {
     setLoading(true)
@@ -44,15 +62,15 @@ export function EmployeeActionDialog({ action, onClose, onDeleted }: Props) {
         </button>
       </header>
       {action.kind === 'edit' ? (
-        <div className={styles.employeeForm}>
+        <form className={styles.employeeForm} onSubmit={handleSave}>
           <div className={styles.nameFields}>
-            <label>Имя<input defaultValue={employee.first_name ?? ''} disabled /></label>
-            <label>Фамилия<input defaultValue={employee.last_name ?? ''} disabled /></label>
+            <label>Имя<input name="firstName" defaultValue={employee.first_name ?? ''} maxLength={255} disabled={loading} /></label>
+            <label>Фамилия<input name="lastName" defaultValue={employee.last_name ?? ''} maxLength={255} disabled={loading} /></label>
           </div>
           <label>Username пользователя Telegram<input defaultValue={employee.username ? '@' + employee.username.replace(/^@/, '') : ''} disabled /></label>
-          <p>Изменение данных пока недоступно.</p>
-          <div className={styles.dialogActions}><button className={styles.primaryButton} type="button" disabled>Сохранить</button></div>
-        </div>
+          {error && <p className={styles.error} role="alert">{error}</p>}
+          <div className={styles.dialogActions}><button className={styles.primaryButton} type="submit" disabled={loading}>{loading ? 'Сохранение…' : 'Сохранить'}</button></div>
+        </form>
       ) : (
         <>
           <p>{[employee.first_name, employee.last_name].filter(Boolean).join(' ') || employee.telegram_id}{employee.username ? ' · @' + employee.username.replace(/^@/, '') : ''}</p>

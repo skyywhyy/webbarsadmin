@@ -30,3 +30,10 @@ export function createEmployee(telegramId: number, firstName: string, lastName: 
 export function deleteEmployee(id: string) {
   return request<void>('/employees/' + encodeURIComponent(id), { method: 'DELETE' })
 }
+
+export function updateEmployee(id: string, firstName: string, lastName: string) {
+  return request<Employee>('/employees/' + encodeURIComponent(id), {
+    method: 'PATCH',
+    body: JSON.stringify({ first_name: firstName.trim() || null, last_name: lastName.trim() || null }),
+  })
+}
