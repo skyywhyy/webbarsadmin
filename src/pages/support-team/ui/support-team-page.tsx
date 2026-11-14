@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Toast, useToast } from '@/shared/ui/toast'
 import { loadEmployees } from '../model/employees'
 import type { Employee } from '../model/employees'
 import { EmployeeDialog } from './employee-dialog'
@@ -14,6 +15,7 @@ export function SupportTeamPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [revision, setRevision] = useState(0)
+  const { toast, showToast } = useToast()
   const pageCount = Math.max(1, Math.ceil(total / pageSize))
   const offset = (page - 1) * pageSize
 
@@ -38,6 +40,14 @@ export function SupportTeamPage() {
   function changePage(next: number) {
     setLoading(true)
     setPage(next)
+  }
+
+  function handleEmployeeAdded() {
+    setDialog(null)
+    setLoading(true)
+    setPage(1)
+    setRevision((value) => value + 1)
+    showToast('Сотрудник добавлен')
   }
 
   return (
@@ -82,7 +92,8 @@ export function SupportTeamPage() {
           </>
         )}
       </section>
-      {dialog && <EmployeeDialog kind={dialog} onClose={() => setDialog(null)} onAdded={() => { setDialog(null); setLoading(true); setPage(1); setRevision((value) => value + 1) }} />}
+      <Toast message={toast} />
+      {dialog && <EmployeeDialog kind={dialog} onClose={() => setDialog(null)} onAdded={handleEmployeeAdded} />}
     </main>
   )
 }

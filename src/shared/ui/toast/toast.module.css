@@ -1,0 +1,36 @@
+.viewport {
+  position: fixed;
+  z-index: 10;
+  inset-block-start: 16px;
+  inset-inline-end: 16px;
+  width: min(370px, calc(100% - 32px));
+  pointer-events: none;
+}
+
+.toast {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 50px;
+  padding: 12px 21px;
+  border: 1px solid #dce3e6;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 4px 16px #11171914;
+  color: #111719;
+  font: 400 14px / 17px 'Golos Text', sans-serif;
+  overflow-wrap: anywhere;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #23824a;
+}
+
+.toast[data-kind='error'] .dot {
+  background: #c63f44;
+}
