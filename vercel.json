@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "outputDirectory": "build",
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://api.cheremha.ru/:path*" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
