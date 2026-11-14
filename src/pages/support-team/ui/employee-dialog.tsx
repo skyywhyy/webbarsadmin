@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
+import { useAnimatedDialog } from '@/shared/ui/dialog'
 import { createEmployee } from '../model/employees'
 import { InviteForm } from './invite-form'
 import styles from './support-team-page.module.css'
@@ -11,13 +12,13 @@ type Props = {
 }
 
 export function EmployeeDialog({ kind, onClose, onAdded }: Props) {
-  const dialog = useRef<HTMLDialogElement>(null)
+  const { dialog, closeDialog } = useAnimatedDialog()
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     dialog.current?.showModal()
-  }, [])
+  }, [dialog])
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -31,6 +32,7 @@ export function EmployeeDialog({ kind, onClose, onAdded }: Props) {
     setError('')
     try {
       await createEmployee(telegramId, String(data.get('firstName')).trim(), String(data.get('lastName')).trim())
+      await closeDialog()
       onAdded()
     } catch {
       setError('Не удалось добавить сотрудника. Проверьте данные и попробуйте снова.')
@@ -40,10 +42,10 @@ export function EmployeeDialog({ kind, onClose, onAdded }: Props) {
   }
 
   return (
-    <dialog ref={dialog} onClose={onClose} className={`${styles.dialog} ${styles.employeeDialog}`} aria-labelledby="employee-dialog-title">
+    <dialog ref={dialog} onClose={onClose} onCancel={(event) => { event.preventDefault(); if (!loading) void closeDialog() }} className={`${styles.dialog} ${styles.employeeDialog}`} aria-labelledby="employee-dialog-title">
       <header className={styles.dialogHeader}>
         <h2 id="employee-dialog-title">{kind === 'invite' ? 'Пригласить сотрудника' : 'Добавить пользователя'}</h2>
-        <button className={`${styles.iconButton} ${styles.dialogClose}`} type="button" onClick={() => dialog.current?.close()} aria-label="Закрыть">
+        <button className={`${styles.iconButton} ${styles.dialogClose}`} type="button" onClick={() => void closeDialog()} aria-label="Закрыть" disabled={loading}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <path d="M1 1l12 12M13 1L1 13" />
           </svg>

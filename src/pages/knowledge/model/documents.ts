@@ -1,6 +1,6 @@
 import { request } from '@/shared/api/client'
 
-export type DocumentStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'unavailable'
+export type DocumentStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'skipped' | 'unavailable'
 
 export type KnowledgeDocument = {
   id: string

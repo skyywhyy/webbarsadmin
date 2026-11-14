@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Toast, useToast } from '@/shared/ui/toast'
+import { useAnimatedRows } from '@/shared/ui/table'
+import { animateMenu } from '@/shared/ui/menu'
 import { loadEmployees } from '../model/employees'
 import type { Employee } from '../model/employees'
 import { EmployeeDialog } from './employee-dialog'
@@ -18,6 +20,7 @@ export function SupportTeamPage() {
   const [loading, setLoading] = useState(true)
   const [revision, setRevision] = useState(0)
   const { toast, showToast } = useToast()
+  const { bodyRef, removeRow, isRemoving } = useAnimatedRows({ animateNewRows: true })
   const pageCount = Math.max(1, Math.ceil(total / pageSize))
   const offset = (page - 1) * pageSize
 
@@ -40,7 +43,7 @@ export function SupportTeamPage() {
   }, [page, revision])
 
   function changePage(next: number) {
-    if (next === page) return
+    if (next === page || isRemoving) return
     setLoading(true)
     setPage(next)
   }
@@ -53,12 +56,28 @@ export function SupportTeamPage() {
     showToast('Сотрудник добавлен')
   }
 
+  async function handleEmployeeDeleted(employee: Employee) {
+    setAction(null)
+    await removeRow(employee.id, () => {
+      const nextTotal = Math.max(0, total - 1)
+      const nextPage = Math.min(page, Math.max(1, Math.ceil(nextTotal / pageSize)))
+      setEmployees((current) => current.filter((item) => item.id !== employee.id))
+      setTotal(nextTotal)
+      if (nextPage !== page) {
+        setLoading(true)
+        setPage(nextPage)
+      }
+      setRevision((value) => value + 1)
+    })
+    showToast('Сотрудник удалён')
+  }
+
   return (
     <main className={styles.page}>
       <header className={styles.heading}><h1>Список клиентов</h1></header>
       <div className={styles.toolbar}>
-        <button type="button" className={styles.secondaryButton} onClick={() => setDialog('invite')}>Пригласить по ссылке</button>
-        <button type="button" className={styles.primaryButton} onClick={() => setDialog('add')}>Добавить пользователя</button>
+        <button type="button" className={styles.secondaryButton} disabled={isRemoving} onClick={() => setDialog('invite')}>Пригласить по ссылке</button>
+        <button type="button" className={styles.primaryButton} disabled={isRemoving} onClick={() => setDialog('add')}>Добавить пользователя</button>
       </div>
       <section aria-labelledby="employees-heading">
         <h2 className={styles.sectionHeading} id="employees-heading">Сотрудники</h2>
@@ -78,18 +97,18 @@ export function SupportTeamPage() {
               <table className={styles.table} aria-labelledby="employees-heading">
                 <colgroup><col /><col /><col /><col className={styles.actionColumn} /></colgroup>
                 <thead><tr><th scope="col">Имя и фамилия</th><th scope="col">Telegram</th><th scope="col">ID пользователя</th><th scope="col"><span className={styles.visuallyHidden}>Действия</span></th></tr></thead>
-                <tbody>
+                <tbody ref={bodyRef}>
                   {employees.map((employee) => (
-                    <tr key={employee.id}>
+                    <tr key={employee.id} data-row-id={employee.id}>
                       <th scope="row">{[employee.first_name, employee.last_name].filter(Boolean).join(' ') || '—'}</th>
                       <td>{employee.username ? '@' + employee.username.replace(/^@/, '') : '—'}</td>
                       <td>{employee.telegram_id}</td>
                       <td>
-                        <details className={styles.employeeActions} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false }} onKeyDown={(event) => { if (event.key === 'Escape' && event.currentTarget.open) { event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus() } }}>
+                        <details className={styles.employeeActions} onToggle={animateMenu} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false }} onKeyDown={(event) => { if (event.key === 'Escape' && event.currentTarget.open) { event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus() } }}>
                           <summary className={styles.iconButton} aria-label={'Действия сотрудника ' + ([employee.first_name, employee.last_name].filter(Boolean).join(' ') || employee.telegram_id)}>···</summary>
-                          <div className={styles.actionList}>
-                            <button type="button" onClick={(event) => { event.currentTarget.closest('details')!.open = false; setAction({ kind: 'edit', employee }) }}>Изменить данные</button>
-                            <button type="button" onClick={(event) => { event.currentTarget.closest('details')!.open = false; setAction({ kind: 'delete', employee }) }}>Удалить сотрудника</button>
+                          <div className={styles.actionList} data-menu-panel>
+                            <button type="button" disabled={isRemoving} onClick={(event) => { event.currentTarget.closest('details')!.open = false; setAction({ kind: 'edit', employee }) }}>Изменить данные</button>
+                            <button type="button" disabled={isRemoving} onClick={(event) => { event.currentTarget.closest('details')!.open = false; setAction({ kind: 'delete', employee }) }}>Удалить сотрудника</button>
                           </div>
                         </details>
                       </td>
@@ -102,11 +121,11 @@ export function SupportTeamPage() {
             <footer className={styles.footer}>
               <p aria-live="polite">Показано {employees.length ? (offset + 1) + '–' + (offset + employees.length) : 0} из {total}</p>
               <nav className={styles.pagination} aria-label="Страницы списка сотрудников">
-                <button className={styles.pageArrow} type="button" aria-label="Предыдущая страница" disabled={page === 1} onClick={() => changePage(page - 1)}>‹</button>
+                <button className={styles.pageArrow} type="button" aria-label="Предыдущая страница" disabled={page === 1 || isRemoving} onClick={() => changePage(page - 1)}>‹</button>
                 {Array.from({ length: pageCount }, (_, index) => index + 1).map((number) => (
-                  <button key={number} type="button" aria-label={'Страница ' + number} aria-current={number === page ? 'page' : undefined} onClick={() => changePage(number)}>{number}</button>
+                  <button key={number} type="button" disabled={isRemoving} aria-label={'Страница ' + number} aria-current={number === page ? 'page' : undefined} onClick={() => changePage(number)}>{number}</button>
                 ))}
-                <button className={styles.pageArrow} type="button" aria-label="Следующая страница" disabled={page === pageCount} onClick={() => changePage(page + 1)}>›</button>
+                <button className={styles.pageArrow} type="button" aria-label="Следующая страница" disabled={page === pageCount || isRemoving} onClick={() => changePage(page + 1)}>›</button>
               </nav>
             </footer>
           </>
@@ -114,7 +133,7 @@ export function SupportTeamPage() {
       </section>
       <Toast message={toast} />
       {dialog && <EmployeeDialog kind={dialog} onClose={() => setDialog(null)} onAdded={handleEmployeeAdded} />}
-      {action && <EmployeeActionDialog action={action} onClose={() => setAction(null)} onDeleted={() => { setAction(null); setLoading(true); if (employees.length === 1 && page > 1) setPage(page - 1); else setRevision((value) => value + 1); showToast('Сотрудник удалён') }} />}
+      {action && <EmployeeActionDialog action={action} onClose={() => setAction(null)} onDeleted={() => void handleEmployeeDeleted(action.employee)} />}
     </main>
   )
 }
