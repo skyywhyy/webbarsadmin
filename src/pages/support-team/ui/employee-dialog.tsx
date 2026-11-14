@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Employee } from '../model/employees'
+import { InviteForm } from './invite-form'
 import styles from './support-team-page.module.css'
 
 export type EmployeeDialogState =
@@ -70,7 +71,7 @@ export function EmployeeDialog({ state, employees, saveError, onClose, onSave }:
       </header>
       {saveError && <p className={styles.error} role="alert">{saveError}</p>}
       {state.kind === 'invite' ? (
-        <p>Приглашения по ссылке доступны после подключения Telegram-бота. Пока сотрудника можно добавить по имени пользователя.</p>
+        <InviteForm onClose={() => dialog.current?.close()} />
       ) : state.kind === 'delete' && employee ? (
         <>
           <p>{employee.firstName} {employee.lastName} · @{employee.username}</p>
@@ -109,3 +110,4 @@ export function EmployeeDialog({ state, employees, saveError, onClose, onSave }:
     </dialog>
   )
 }
+
