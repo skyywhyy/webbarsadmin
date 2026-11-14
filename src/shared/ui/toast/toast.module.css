@@ -1,7 +1,8 @@
 .viewport {
   position: fixed;
-  z-index: 10;
-  inset-block-start: 16px;
+  z-index: 1000;
+  inset-block-end: 16px;
+  inset-block-end: max(16px, env(safe-area-inset-bottom, 0px));
   inset-inline-end: 16px;
   width: min(370px, calc(100% - 32px));
   pointer-events: none;
@@ -22,6 +23,31 @@
   color: #111719;
   font: 400 14px / 17px 'Golos Text', sans-serif;
   overflow-wrap: anywhere;
+  animation-name: toastLifetime;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+}
+
+@keyframes toastLifetime {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+    animation-timing-function: cubic-bezier(0.2, 0, 0.2, 1);
+  }
+  12%, 88% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
 }
 
 .dot {

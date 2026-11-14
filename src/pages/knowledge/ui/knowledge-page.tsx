@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, DragEvent as ReactDragEvent, MouseEvent } from 'react'
 import { Toast, useToast } from '@/shared/ui/toast'
+import { useAnimatedRows } from '@/shared/ui/table'
+import { useAnimatedDialog } from '@/shared/ui/dialog'
+import { animateMenu } from '@/shared/ui/menu'
 import { documentFromFile, loadDocuments, loadJob, removeDocument, replaceDocument, uploadDocument } from '../model/documents'
 import type { KnowledgeDocument } from '../model/documents'
 import styles from './knowledge-page.module.css'
@@ -17,8 +20,10 @@ const statusLabels = {
   running: 'Обрабатывается',
   succeeded: 'Готово',
   failed: 'Ошибка обработки',
+  skipped: 'Пропущено',
   unavailable: 'Не удалось проверить статус',
 }
+const terminalStatuses = new Set(['succeeded', 'failed', 'skipped'])
 
 function documentCount(count: number) {
   return count + ' ' + (documentNouns[plurals.select(count)] ?? 'документов')
@@ -27,6 +32,7 @@ function documentCount(count: number) {
 export function KnowledgePage() {
   const [documents, setDocuments] = useState<KnowledgeDocument[]>([])
   const { toast, showToast } = useToast()
+  const { bodyRef, removeRow } = useAnimatedRows({ animateNewRows: true })
   const [documentToDelete, setDocumentToDelete] = useState<KnowledgeDocument | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
@@ -44,9 +50,9 @@ export function KnowledgePage() {
   const replacementTarget = useRef<KnowledgeDocument | null>(null)
   const mutationInProgress = useRef(false)
   const pendingJobs = useRef(new Set<string>())
-  const modal = useRef<HTMLDialogElement>(null)
+  const { dialog: modal, closeDialog } = useAnimatedDialog()
 
-  const activeJobIds = documents.filter((item) => item.jobId && item.status !== 'succeeded' && item.status !== 'failed').map((item) => item.jobId).join(',')
+  const activeJobIds = documents.filter((item) => item.jobId && !terminalStatuses.has(item.status ?? '')).map((item) => item.jobId).join(',')
 
   useEffect(() => {
     const controller = new AbortController()
@@ -87,7 +93,7 @@ export function KnowledgePage() {
           const job = await loadJob(jobId, controller.signal)
           if (!controller.signal.aborted) {
             setDocuments((current) => current.map((item) => item.jobId === jobId && item.status !== job.status ? { ...item, status: job.status } : item))
-            if (job.status === 'succeeded' || job.status === 'failed') setDocumentsVersion((value) => value + 1)
+            if (terminalStatuses.has(job.status)) setDocumentsVersion((value) => value + 1)
           }
         } catch {
           if (!controller.signal.aborted) setDocuments((current) => current.map((item) => item.jobId === jobId && item.status !== 'unavailable' ? { ...item, status: 'unavailable' } : item))
@@ -102,7 +108,7 @@ export function KnowledgePage() {
 
   useEffect(() => {
     if (documentToDelete) modal.current?.showModal()
-  }, [documentToDelete])
+  }, [documentToDelete, modal])
 
   useEffect(() => {
     function preventFileNavigation(event: DragEvent) {
@@ -257,9 +263,11 @@ export function KnowledgePage() {
         const result = await response.json() as { error?: string; deleted?: boolean }
         if (!response.ok || !result.deleted) throw new Error(result.error || 'Не удалось удалить документ из Confluence.')
       } else throw new Error('Не удалось определить документ для удаления.')
-      setDocuments((current) => current.filter((entry) => entry.id !== item.id && (!item.sourceId || entry.sourceId !== item.sourceId)))
-      setDocumentsVersion((value) => value + 1)
-      modal.current?.close()
+      await closeDialog()
+      await removeRow(item.id, () => {
+        setDocuments((current) => current.filter((entry) => entry.id !== item.id && (!item.sourceId || entry.sourceId !== item.sourceId)))
+        setDocumentsVersion((value) => value + 1)
+      })
       showToast(item.url ? 'Документ перемещён в корзину Confluence' : 'Документ удалён')
     } catch (error) {
       setDeleteError(!item.jobId && error instanceof Error ? error.message : 'Не удалось удалить документ. Попробуйте ещё раз.')
@@ -345,15 +353,20 @@ export function KnowledgePage() {
                   <th scope="col"><span className={styles.visuallyHidden}>Действия</span></th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody ref={bodyRef}>
                 {documents.map((item) => (
-                  <tr key={item.id}>
+                  <tr key={item.id} data-row-id={item.id}>
                     <th scope="row">{item.name}<small>{item.description}</small></th>
                     <td>{dateFormat.format(item.date)}</td>
-                    <td className={item.status === 'failed' || item.status === 'unavailable' ? styles.statusError : undefined} aria-live="polite">{item.status ? statusLabels[item.status] : 'Добавлен'}</td>
+                    <td className={item.status === 'failed' || item.status === 'unavailable' ? styles.statusError : undefined} aria-live="polite">
+                      <span className={item.status === 'queued' || item.status === 'running' ? styles.processingStatus : undefined}>
+                        {item.status ? statusLabels[item.status] : 'Добавлен'}
+                      </span>
+                    </td>
                     <td className={styles.actions}>
                       <details
                         className={styles.menu}
+                        onToggle={animateMenu}
                         onBlur={(event) => {
                           if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false
                         }}
@@ -365,7 +378,7 @@ export function KnowledgePage() {
                         }}
                       >
                         <summary className={styles.iconButton} aria-label={'Действия: ' + item.name}>···</summary>
-                        <div className={styles.menuPanel}>
+                        <div className={styles.menuPanel} data-menu-panel>
                           <button type="button" onClick={(event) => {
                             closeMenu(event)
                             openDocument(item)
@@ -390,7 +403,7 @@ export function KnowledgePage() {
         ) : null}
       </section>
 
-      <dialog ref={modal} className={styles.dialog} onCancel={(event) => { if (isDeleting) event.preventDefault() }} onClose={() => setDocumentToDelete(null)} aria-labelledby="document-dialog-title">
+      <dialog ref={modal} className={styles.dialog} onCancel={(event) => { event.preventDefault(); if (!isDeleting) void closeDialog() }} onClose={() => setDocumentToDelete(null)} aria-labelledby="document-dialog-title">
         {documentToDelete && (
           <>
             <h2 id="document-dialog-title">{documentToDelete.url ? 'Удалить из Confluence?' : 'Удалить документ?'}</h2>
@@ -398,7 +411,7 @@ export function KnowledgePage() {
             {documentToDelete.url && <p>{documentToDelete.confluenceType === 'attachment' ? 'Вложение' : 'Страница'} будет перемещено в корзину Confluence. Удаление затронет всех пользователей с доступом к этому материалу.</p>}
             {deleteError && <p role="alert" className={styles.deleteError}>{deleteError}</p>}
             <div className={styles.dialogActions}>
-              <button type="button" className={styles.secondary} disabled={isDeleting} onClick={() => modal.current?.close()}>Отмена</button>
+              <button type="button" className={styles.secondary} disabled={isDeleting} onClick={() => void closeDialog()}>Отмена</button>
               <button type="button" className={styles.danger} disabled={isDeleting} onClick={() => void deleteDocument(documentToDelete)}>{isDeleting ? 'Удаление…' : 'Удалить'}</button>
             </div>
           </>

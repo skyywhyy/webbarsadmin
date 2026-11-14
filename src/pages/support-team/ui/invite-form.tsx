@@ -72,7 +72,7 @@ export function InviteForm() {
       <p className={styles.description}>Создайте ссылку для регистрации в Telegram-боте.</p>
       <fieldset className={styles.options}>
         <legend>Количество сотрудников</legend>
-        <div className={styles.segmented}>
+        <div className={styles.segmented} data-mode={mode}>
           <label>
             <input type="radio" name="mode" value="one" checked={mode === 'one'} onChange={() => setMode('one')} />
             <span>Один сотрудник</span>
@@ -83,29 +83,31 @@ export function InviteForm() {
           </label>
         </div>
       </fieldset>
-      {mode === 'one' ? (
-        <>
-          <div className={styles.names}>
+      <div key={mode} className={styles.modeFields}>
+        {mode === 'one' ? (
+          <>
+            <div className={styles.names}>
+              <label className={styles.field}>
+                Имя
+                <input name="firstName" placeholder="Введите имя" maxLength={100} />
+              </label>
+              <label className={styles.field}>
+                Фамилия
+                <input name="lastName" placeholder="Введите фамилию" maxLength={100} />
+              </label>
+            </div>
+            <p className={styles.hint}>Имя и фамилию можно не указывать.</p>
+          </>
+        ) : (
+          <>
             <label className={styles.field}>
-              Имя
-              <input name="firstName" placeholder="Введите имя" maxLength={100} />
+              Количество сотрудников
+              <input className={styles.count} name="count" type="number" min="2" step="1" required value={count} onChange={(event) => setCount(event.target.value)} />
             </label>
-            <label className={styles.field}>
-              Фамилия
-              <input name="lastName" placeholder="Введите фамилию" maxLength={100} />
-            </label>
-          </div>
-          <p className={styles.hint}>Имя и фамилию можно не указывать.</p>
-        </>
-      ) : (
-        <>
-          <label className={styles.field}>
-            Количество сотрудников
-            <input className={styles.count} name="count" type="number" min="2" step="1" required value={count} onChange={(event) => setCount(event.target.value)} />
-          </label>
-          <p className={styles.hint}>Ссылка будет рассчитана на указанное количество сотрудников.</p>
-        </>
-      )}
+            <p className={styles.hint}>Ссылка будет рассчитана на указанное количество сотрудников.</p>
+          </>
+        )}
+      </div>
       {error && <p className={styles.error} role="alert">{error}</p>}
       <div className={styles.actions}>
         <button type="submit" className={styles.primary} disabled={loading}>{loading ? 'Создание…' : 'Создать ссылку'}</button>

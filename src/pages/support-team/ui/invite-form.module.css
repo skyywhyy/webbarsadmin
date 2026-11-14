@@ -26,6 +26,8 @@
 }
 
 .segmented {
+  position: relative;
+  isolation: isolate;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 4px;
@@ -35,8 +37,26 @@
   background: #f1f4f5;
 }
 
+.segmented::before {
+  position: absolute;
+  inset: 4px auto 4px 4px;
+  box-sizing: border-box;
+  width: calc((100% - 12px) / 2);
+  border: 1px solid #dce3e6;
+  border-radius: 3px;
+  background: #fff;
+  content: '';
+  pointer-events: none;
+  transition: transform 600ms cubic-bezier(0.2, 0, 0.2, 1);
+}
+
+.segmented[data-mode='many']::before {
+  transform: translateX(calc(100% + 4px));
+}
+
 .segmented label {
   position: relative;
+  z-index: 1;
 }
 
 .segmented input {
@@ -54,11 +74,10 @@
   color: #71848e;
   text-align: center;
   cursor: pointer;
+  transition: color 450ms ease;
 }
 
 .segmented input:checked + span {
-  border-color: #dce3e6;
-  background: #fff;
   color: #111719;
   font-weight: 500;
 }
@@ -66,6 +85,34 @@
 .segmented input:focus-visible + span {
   outline: 2px solid #4e5f65;
   outline-offset: 2px;
+}
+
+.modeFields {
+  display: grid;
+  gap: 18px;
+  animation: modeFieldsEnter 600ms cubic-bezier(0.2, 0, 0.2, 1);
+}
+
+@keyframes modeFieldsEnter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .segmented::before,
+  .segmented span {
+    transition: none;
+  }
+
+  .modeFields {
+    animation: none;
+  }
 }
 
 .names {
