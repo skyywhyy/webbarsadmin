@@ -82,6 +82,44 @@
   line-height: 29px;
 }
 
+.loadError {
+  display: flex;
+  min-height: 190px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 32px 16px;
+  border-block: 1px solid var(--line);
+  text-align: center;
+}
+
+.loadErrorTitle {
+  margin: 0;
+  font-weight: 600;
+}
+
+.loadErrorDescription {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.retryButton {
+  min-height: 40px;
+  padding: 0 18px;
+  border: 1px solid #aebcc1;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.retryButton:hover {
+  background: var(--control);
+}
+
 .table {
   width: 100%;
   table-layout: fixed;

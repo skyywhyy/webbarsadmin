@@ -62,7 +62,15 @@ export function SupportTeamPage() {
       </div>
       <section aria-labelledby="employees-heading">
         <h2 className={styles.sectionHeading} id="employees-heading">Сотрудники</h2>
-        {error && <div role="alert"><p className={styles.error}>{error}</p><button type="button" onClick={() => { setLoading(true); setRevision((value) => value + 1) }}>Повторить</button></div>}
+        {error && !loading && (
+          <div className={styles.loadError} role="alert">
+            <div>
+              <p className={styles.loadErrorTitle}>Не удалось загрузить сотрудников</p>
+              <p className={styles.loadErrorDescription}>Попробуйте обновить список чуть позже.</p>
+            </div>
+            <button className={styles.retryButton} type="button" onClick={() => { setError(''); setLoading(true); setRevision((value) => value + 1) }}>Попробовать снова</button>
+          </div>
+        )}
         {loading && <p role="status">Загрузка сотрудников…</p>}
         {!loading && !error && (
           <>
