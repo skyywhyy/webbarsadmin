@@ -21,7 +21,13 @@ export function KnowledgePage() {
   const [documents, setDocuments] = useState<KnowledgeDocument[]>([])
   const { toast, showToast } = useToast()
   const [documentToDelete, setDocumentToDelete] = useState<KnowledgeDocument | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
   const [isDraggingFile, setIsDraggingFile] = useState(false)
+  const [isSyncing, setIsSyncing] = useState(true)
+  const [confluenceConnected, setConfluenceConnected] = useState(false)
+  const [confluenceError, setConfluenceError] = useState('')
+  const [syncVersion, setSyncVersion] = useState(0)
   const fileInput = useRef<HTMLInputElement>(null)
   const replacement = useRef<KnowledgeDocument | null>(null)
   const modal = useRef<HTMLDialogElement>(null)
@@ -102,7 +108,39 @@ export function KnowledgePage() {
     }
   }
 
+  useEffect(() => {
+    const controller = new AbortController()
+    async function loadConfluence() {
+      try {
+        const response = await fetch('/local-confluence/search', {
+          method: 'POST',
+          signal: controller.signal,
+        })
+        const result = await response.json() as { documents?: KnowledgeDocument[]; error?: string }
+        if (!response.ok || !result.documents) throw new Error(result.error || 'Не удалось загрузить документы.')
+        if (controller.signal.aborted) return
+        const imported = result.documents
+        setDocuments((current) => [...imported, ...current.filter((item) => !item.id.startsWith('confluence:'))])
+        setConfluenceConnected(true)
+        setConfluenceError('')
+      } catch (error) {
+        if (controller.signal.aborted) return
+        setConfluenceConnected(false)
+        setConfluenceError(error instanceof Error ? error.message : 'Не удалось подключить Confluence.')
+      } finally {
+        if (!controller.signal.aborted) setIsSyncing(false)
+      }
+    }
+    void loadConfluence()
+    return () => controller.abort()
+  }, [syncVersion])
+
   function openDocument(item: KnowledgeDocument) {
+    if (item.url) {
+      window.open(item.url, '_blank', 'noopener,noreferrer')
+      return
+    }
+    if (!item.file) return
     const url = URL.createObjectURL(item.file)
     const anchor = document.createElement('a')
     anchor.href = url
@@ -113,10 +151,28 @@ export function KnowledgePage() {
     window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
   }
 
-  function deleteDocument(item: KnowledgeDocument) {
-    setDocuments((current) => current.filter((entry) => entry.id !== item.id))
-    modal.current?.close()
-    showToast('Документ удалён')
+  async function deleteDocument(item: KnowledgeDocument) {
+    setIsDeleting(true)
+    setDeleteError('')
+    try {
+      if (item.url) {
+        if (!item.confluenceType || !item.id.startsWith('confluence:')) throw new Error('Не удалось определить тип документа Confluence.')
+        const response = await fetch('/local-confluence/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: item.id.slice('confluence:'.length), type: item.confluenceType }),
+        })
+        const result = await response.json() as { error?: string; deleted?: boolean }
+        if (!response.ok || !result.deleted) throw new Error(result.error || 'Не удалось удалить документ из Confluence.')
+      }
+      setDocuments((current) => current.filter((entry) => entry.id !== item.id))
+      modal.current?.close()
+      showToast(item.url ? 'Документ перемещён в корзину Confluence' : 'Документ удалён')
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : 'Не удалось удалить документ.')
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   return (
@@ -157,9 +213,14 @@ export function KnowledgePage() {
           <div className={styles.integration}>
             <div>
               <h4>Confluence</h4>
-              <p>Подключение пока недоступно</p>
+              <p role="status">{isSyncing ? 'Загрузка документов…' : confluenceError || (confluenceConnected ? 'Подключено локально' : 'Нет подключения')}</p>
             </div>
-            <button className={styles.primary} type="button" disabled>Подключить Confluence</button>
+            <button className={styles.primary} type="button" disabled={isSyncing || isDeleting} onClick={() => {
+              setIsSyncing(true)
+              setSyncVersion((version) => version + 1)
+            }}>
+              {isSyncing ? 'Загрузка…' : confluenceError ? 'Повторить' : 'Обновить список'}
+            </button>
           </div>
         </section>
       </section>
@@ -171,8 +232,8 @@ export function KnowledgePage() {
         </header>
         {documents.length === 0 ? (
           <div className={styles.emptyState}>
-            <h3>Документов пока нет</h3>
-            <p>Загрузите первый документ, чтобы сформировать базу знаний.</p>
+            <h3>{isSyncing ? 'Загружаем документы' : 'Документов пока нет'}</h3>
+            <p>{isSyncing ? 'Получаем список из Confluence.' : 'Загрузите документ с устройства или обновите список Confluence.'}</p>
           </div>
         ) : (
           <div className={styles.tableWrap}>
@@ -181,7 +242,7 @@ export function KnowledgePage() {
               <thead>
                 <tr>
                   <th scope="col">Документ</th>
-                  <th scope="col">Дата загрузки</th>
+                  <th scope="col">Дата добавления / изменения</th>
                   <th scope="col">Статус</th>
                   <th scope="col"><span className={styles.visuallyHidden}>Действия</span></th>
                 </tr>
@@ -211,14 +272,15 @@ export function KnowledgePage() {
                             closeMenu(event)
                             openDocument(item)
                           }}>Открыть документ</button>
-                          <button type="button" onClick={(event) => {
+                          {!item.url && <button type="button" onClick={(event) => {
                             closeMenu(event)
                             chooseFile(item)
-                          }}>Заменить документ</button>
+                          }}>Заменить документ</button>}
                           <button type="button" onClick={(event) => {
                             closeMenu(event)
+                            setDeleteError('')
                             setDocumentToDelete(item)
-                          }}>Удалить документ</button>
+                          }} disabled={isSyncing || isDeleting}>Удалить документ</button>
                         </div>
                       </details>
                     </td>
@@ -230,14 +292,16 @@ export function KnowledgePage() {
         )}
       </section>
 
-      <dialog ref={modal} className={styles.dialog} onClose={() => setDocumentToDelete(null)} aria-labelledby="document-dialog-title">
+      <dialog ref={modal} className={styles.dialog} onCancel={(event) => { if (isDeleting) event.preventDefault() }} onClose={() => setDocumentToDelete(null)} aria-labelledby="document-dialog-title">
         {documentToDelete && (
           <>
-            <h2 id="document-dialog-title">Удалить документ?</h2>
+            <h2 id="document-dialog-title">{documentToDelete.url ? 'Удалить из Confluence?' : 'Удалить документ?'}</h2>
             <p>{documentToDelete.name}</p>
+            {documentToDelete.url && <p>{documentToDelete.confluenceType === 'attachment' ? 'Вложение' : 'Страница'} будет перемещено в корзину Confluence. Удаление затронет всех пользователей с доступом к этому материалу.</p>}
+            {deleteError && <p role="alert" className={styles.deleteError}>{deleteError}</p>}
             <div className={styles.dialogActions}>
-              <button type="button" className={styles.secondary} onClick={() => modal.current?.close()}>Отмена</button>
-              <button type="button" className={styles.danger} onClick={() => deleteDocument(documentToDelete)}>Удалить</button>
+              <button type="button" className={styles.secondary} disabled={isDeleting} onClick={() => modal.current?.close()}>Отмена</button>
+              <button type="button" className={styles.danger} disabled={isDeleting} onClick={() => void deleteDocument(documentToDelete)}>{isDeleting ? 'Удаление…' : 'Удалить'}</button>
             </div>
           </>
         )}

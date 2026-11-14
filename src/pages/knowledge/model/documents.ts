@@ -3,7 +3,9 @@ export type KnowledgeDocument = {
   name: string
   description: string
   date: number
-  file: Blob
+  file?: Blob
+  url?: string
+  confluenceType?: 'page' | 'attachment'
 }
 
 const fileTypes = new Map([

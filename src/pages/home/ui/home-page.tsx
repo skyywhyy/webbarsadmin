@@ -44,7 +44,7 @@ export function HomePage() {
       </section>
 
       <section className={styles.topics} aria-labelledby="topics-heading">
-        <h2 id="topics-heading">хцуйня просто пиздец какая то </h2>
+        <h2 id="topics-heading">Категории товаров</h2>
         <p className={styles.empty}>Нет данных по темам обращений</p>
       </section>
     </main>

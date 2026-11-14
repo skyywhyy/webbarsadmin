@@ -412,3 +412,7 @@
     inset: auto 0 100% auto;
   }
 }
+
+
+.dialog .deleteError { color: var(--danger); }
+.page button:disabled { cursor: not-allowed; opacity: 0.65; }
