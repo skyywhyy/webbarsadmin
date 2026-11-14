@@ -21,7 +21,7 @@ export class ApiError extends Error {
 export async function request<T>(path: string, options: RequestInit = {}, authenticated = true): Promise<T> {
   const headers = new Headers(options.headers)
   headers.set('Accept', 'application/json')
-  if (options.body) headers.set('Content-Type', 'application/json')
+  if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
   const token = getToken()
   if (authenticated && token) headers.set('Authorization', 'Bearer ' + token)
 
