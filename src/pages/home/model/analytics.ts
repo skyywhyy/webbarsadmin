@@ -1,4 +1,16 @@
+import type { TechnicalRange } from './technical-analytics'
+
+export type DocumentPeriod = { range: TechnicalRange; fromAt: number; toAt: number }
+
+export function createDocumentPeriod(range: TechnicalRange, toAt = Date.now()): DocumentPeriod {
+  const duration = { '1h': 3_600_000, '24h': 86_400_000, '7d': 7 * 86_400_000 }
+  return { range, fromAt: toAt - duration[range], toAt }
+}
+
 export type DocumentAnalyticsData = {
+  range: TechnicalRange | null
+  from_at: string | null
+  to_at: string
   upload_count: number
   total_size_bytes: number
   known_size_count: number
@@ -48,9 +60,10 @@ export function toAnalyticsDocument(job: DocumentJob): AnalyticsDocument {
 
 export function filterDocuments<T extends AnalyticsDocument>(
   documents: T[],
-  filters: { format: string; size: DocumentSizeFilter },
+  filters: { format: string; size: DocumentSizeFilter; period?: DocumentPeriod },
 ) {
   return documents.filter((document) => {
+    if (filters.period && (document.createdAt === null || document.createdAt < filters.period.fromAt || document.createdAt > filters.period.toAt)) return false
     if (filters.format !== 'all' && document.format !== filters.format) return false
     if (filters.size === 'all') return true
     if (document.sizeBytes === null) return false
@@ -75,11 +88,4 @@ export function formatBytes(bytes: number | null) {
   if (bytes >= 1_048_576) return numberFormat.format(bytes / 1_048_576) + ' МБ'
   if (bytes >= 1024) return numberFormat.format(bytes / 1024) + ' КБ'
   return numberFormat.format(bytes) + ' Б'
-}
-
-export function formatFirstRecordedAt(value: string | null) {
-  const timestamp = value === null ? NaN : Date.parse(value)
-  return Number.isFinite(timestamp)
-    ? new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }).format(timestamp)
-    : null
 }

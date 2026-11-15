@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Select } from '@/shared/ui/select'
 import { loadAnalyticsDocuments } from '../model/api'
 import { countDocumentFormats, filterDocuments } from '../model/analytics'
-import type { AnalyticsDocument, DocumentSizeFilter } from '../model/analytics'
+import type { AnalyticsDocument, DocumentPeriod, DocumentSizeFilter } from '../model/analytics'
 import styles from './home-page.module.css'
 
 const numberFormat = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 1 })
@@ -15,7 +15,7 @@ const sizeOptions = [
 ] as const
 type LoadState = { status: 'loading' } | { status: 'error' } | { status: 'ready'; documents: AnalyticsDocument[] }
 
-export function DocumentFormatChart() {
+export function DocumentFormatChart({ period }: { period?: DocumentPeriod } = {}) {
   const [state, setState] = useState<LoadState>({ status: 'loading' })
   const [attempt, setAttempt] = useState(0)
   const [format, setFormat] = useState('all')
@@ -33,7 +33,7 @@ export function DocumentFormatChart() {
 
   const documents = state.status === 'ready' ? state.documents : []
   const formats = [...new Set([...documents.map((document) => document.format), ...(format === 'all' ? [] : [format])])].sort()
-  const filteredDocuments = filterDocuments(documents, { format, size })
+  const filteredDocuments = filterDocuments(documents, { format, size, period })
   const count = filteredDocuments.length
   const formatGroups = countDocumentFormats(filteredDocuments)
 
@@ -57,7 +57,7 @@ export function DocumentFormatChart() {
         </div>
       )}
       {state.status === 'ready' && (count === 0 ? <p className={styles.analyticsLoading}>Нет загрузок с выбранными фильтрами</p> : (
-        <div key={format + ':' + size} className={styles.formatChart} tabIndex={0} role="img" aria-label={formatGroups.map((group) => group.label + ': ' + numberFormat.format(group.count / count * 100) + ' %, загрузок: ' + group.count).join('; ')}>
+        <div key={format + ':' + size + ':' + (period?.range ?? 'all')} className={styles.formatChart} tabIndex={0} role="img" aria-label={formatGroups.map((group) => group.label + ': ' + numberFormat.format(group.count / count * 100) + ' %, загрузок: ' + group.count).join('; ')}>
           <div className={styles.formatPlot} style={{ minWidth: formatGroups.length * 80 - 16 }}>
             {ticks.map((tick) => <div key={tick} className={styles.formatGrid} style={{ bottom: tick * 100 + '%' }}><span>{tick * 100}%</span></div>)}
             <div className={styles.formatColumns} style={{ gridTemplateColumns: `repeat(${formatGroups.length}, minmax(0, 1fr))` }}>

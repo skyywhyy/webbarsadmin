@@ -3,8 +3,8 @@ import { toAnalyticsDocument } from './analytics'
 import type { AnalyticsDocument, DocumentAnalyticsData, DocumentJob } from './analytics'
 import type { RequestCost, TechnicalAnalytics, TechnicalRange } from './technical-analytics'
 
-export function loadDocumentAnalytics(signal: AbortSignal) {
-  return request<DocumentAnalyticsData>('/analytics/documents', { signal })
+export function loadDocumentAnalytics(range: TechnicalRange, signal: AbortSignal) {
+  return request<DocumentAnalyticsData>('/analytics/documents?' + new URLSearchParams({ range }), { signal })
 }
 
 type DocumentPage = { items: DocumentJob[]; total: number }
