@@ -86,7 +86,7 @@ export function RequestAnalytics({ range }: { range: TechnicalRange }) {
             </div>
           </div>
           <dl className={styles.responseFacts}>
-            <div><dt>Замеров этапов</dt><dd>{formatMetric(summary.breakdownSamples)}</dd></div>
+            <div><dt>Учтено запросов</dt><dd>{formatMetric(summary.breakdownSamples)}</dd></div>
             <div><dt>95% ответов быстрее</dt><dd>{formatMilliseconds(data.response_time.p95_ms)}<small>с</small></dd></div>
           </dl>
         </section>
