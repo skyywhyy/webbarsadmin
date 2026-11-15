@@ -6,6 +6,7 @@ export type KnowledgeDocument = {
   id: string
   name: string
   description: string
+  format: string
   date: number
   file?: Blob
   jobId: string
@@ -65,6 +66,7 @@ export async function loadDocuments(signal: AbortSignal): Promise<KnowledgeDocum
     sourceId: job.source_id,
     documentUrl: documentUrl(job.document_url),
     name: job.title,
+    format: job.format.trim().toUpperCase() || 'Без формата',
     description: [job.format.toUpperCase(), job.size_bytes === null ? '' : formatSize(job.size_bytes)].filter(Boolean).join(' · '),
     date: Number.isFinite(Date.parse(job.created_at)) ? Date.parse(job.created_at) : Date.now(),
     status: job.status,
@@ -94,6 +96,7 @@ export function documentFromFile(file: File) {
 
   return {
     name: file.name,
+    format: extension.toUpperCase(),
     description: extension.toUpperCase() + ' · ' + size,
     date: Date.now(),
     file: file.slice(0, file.size, type),
