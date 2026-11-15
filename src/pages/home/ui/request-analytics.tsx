@@ -86,7 +86,7 @@ export function RequestAnalytics({ range }: { range: TechnicalRange }) {
             </div>
           </div>
           <dl className={styles.responseFacts}>
-            <div><dt>Замеров этапов</dt><dd>{formatMetric(summary.breakdownSamples)}</dd></div>
+            <div><dt>Учтено запросов</dt><dd>{formatMetric(summary.breakdownSamples)}</dd></div>
             <div><dt>95% ответов быстрее</dt><dd>{formatMilliseconds(data.response_time.p95_ms)}<small>с</small></dd></div>
           </dl>
         </section>
@@ -102,7 +102,6 @@ export function RequestAnalytics({ range }: { range: TechnicalRange }) {
           <div className={styles.tokenBar} role="img" aria-label={'Входящие токены: ' + formatMetric(summary.input) + ', исходящие: ' + formatMetric(summary.output)}>
             {summary.total > 0 && <><span style={{ width: summary.input / summary.total * 100 + '%' }} /><span style={{ width: summary.output / summary.total * 100 + '%' }} /></>}
           </div>
-          <p className={styles.footnote}>Все вызовы моделей в чате. Токены загрузки документов учитываются отдельно.</p>
         </section>
       </div>
     </>
