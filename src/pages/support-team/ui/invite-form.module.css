@@ -129,7 +129,8 @@
   font-weight: 500;
 }
 
-.field input {
+.field input,
+.expiryControls > input {
   box-sizing: border-box;
   width: 100%;
   height: 46px;
@@ -150,6 +151,49 @@
   line-height: var(--leading-small);
 }
 
+.expiryField {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.expiryField legend {
+  margin-bottom: 9px;
+  padding: 0;
+  font-weight: 500;
+}
+
+.expiryControls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.expiryField .hint {
+  margin-top: 9px;
+}
+
+.expiryUnit > label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.expiryUnit > button {
+  min-height: 46px;
+  border-color: #dce3e6;
+  border-radius: 4px;
+}
+
+.expiryUnit > [role='listbox'] {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
+
 .status:empty {
   display: none;
 }
@@ -161,6 +205,13 @@
 
 .inviteLinkLabel {
   font-weight: 500;
+}
+
+.inviteExpiry {
+  margin: 0;
+  color: #52636b;
+  font-size: var(--text-small);
+  line-height: var(--leading-small);
 }
 
 .inviteLinkRow {
