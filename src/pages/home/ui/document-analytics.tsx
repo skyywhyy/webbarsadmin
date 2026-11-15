@@ -11,8 +11,6 @@ const ticks = [0, 0.25, 0.5, 0.75, 1]
 const formatGroups = [
   { label: 'PDF', formats: ['PDF'] },
   { label: 'DOC / DOCX', formats: ['DOC', 'DOCX'] },
-  { label: 'XLS / XLSX', formats: ['XLS', 'XLSX'] },
-  { label: 'Изображения', formats: ['PNG', 'JPG', 'JPEG', 'GIF', 'WEBP', 'SVG', 'BMP', 'TIFF', 'TIF', 'HEIC', 'AVIF'] },
   { label: 'Другие', formats: [] },
 ]
 const sizeOptions = [
