@@ -5,8 +5,9 @@
 
 .login-form label {
   margin-bottom: 8px;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--text-small);
+  line-height: var(--leading-small);
+  font-weight: 500;
 }
 
 .login-form input {
@@ -28,6 +29,6 @@
 .login-message {
   margin: 0 0 16px;
   color: #52636c;
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: var(--text-small);
+  line-height: var(--leading-small);
 }

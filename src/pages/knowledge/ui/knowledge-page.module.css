@@ -8,7 +8,7 @@
   padding: 65px clamp(24px, 4.167vw, 80px) 54px clamp(24px, 2.917vw, 56px);
   background: #fff;
   color: var(--ink);
-  font: 400 15px / 1.2 'Golos Text', sans-serif;
+  font: 400 var(--text-body) / var(--leading-body) var(--font-ui);
 }
 
 .page :is(h1, h2, h3, p) {
@@ -19,24 +19,24 @@
   padding-bottom: 65px;
   border-bottom: 1px solid var(--line);
   color: #000;
-  font-size: clamp(34px, 3.4vw, 48px);
+  font-size: var(--text-title);
   font-weight: 500;
-  line-height: 58px;
+  line-height: var(--leading-title);
 }
 
 .page h2 {
-  font-size: 24px;
+  font-size: var(--text-heading);
   font-weight: 500;
-  line-height: 29px;
+  line-height: var(--leading-heading);
 }
 
 .addMaterial {
   padding-top: 47px;
-  font: 400 14px / 17px Inter, sans-serif;
+  font: 400 var(--text-small) / var(--leading-small) var(--font-ui);
 }
 
 .addMaterial h2 {
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .addMaterial .intro {
@@ -53,19 +53,19 @@
   min-height: 132px;
   margin-top: 25px;
   padding: 22px 27px 22px 23px;
-  border: 1px dashed #9aaeb6;
+  border: 2px dashed #8a8a8a;
   border-radius: 4px;
 }
 
 .upload[data-dragging='true'] {
-  border-color: var(--muted);
+  border-color: var(--ink);
   background: var(--surface);
 }
 
 .upload h3 {
-  font-size: 16px;
+  font-size: var(--text-body);
   font-weight: 500;
-  line-height: 19px;
+  line-height: var(--leading-body);
 }
 
 .upload p {
@@ -84,12 +84,12 @@
   outline-offset: 2px;
 }
 
-.page :is(.secondary, .danger) {
+.page :is(.primary, .secondary, .danger) {
   min-height: 46px;
   padding-inline: 16px;
   border: 0;
   border-radius: 4px;
-  font: 500 14px / 17px Inter, sans-serif;
+  font: 500 var(--text-small) / var(--leading-small) var(--font-ui);
 }
 
 .page .secondary {
@@ -100,10 +100,16 @@
   background: #e7edef;
 }
 
-.upload button {
+.upload .primary {
   align-self: center;
   width: 208px;
   margin-bottom: 6px;
+  background: var(--ink);
+  color: #fff;
+}
+
+.upload .primary:hover {
+  background: #303b3f;
 }
 
 .documentList {
@@ -137,15 +143,15 @@
 }
 
 .emptyState h3 {
-  font-size: 24px;
+  font-size: var(--text-heading);
   font-weight: 500;
-  line-height: 29px;
+  line-height: var(--leading-heading);
 }
 
 .emptyState p {
   color: var(--muted);
-  font-size: 16px;
-  line-height: 19px;
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
 }
 
 .documentHeading {
@@ -198,10 +204,19 @@
   overflow-wrap: anywhere;
 }
 
+.table tr > :nth-child(2) {
+  padding-inline-start: 88px;
+}
+
+.table tr > :nth-child(3) {
+  padding-inline-start: 36px;
+}
+
 .table thead th {
   height: 50px;
+  line-height: var(--leading-small);
   color: var(--muted);
-  font-size: 14px;
+  font-size: var(--text-small);
   font-weight: 400;
 }
 
@@ -212,7 +227,7 @@
 
 .table tbody th {
   padding-block: 14px;
-  font-size: 16px;
+  font-size: var(--text-body);
   font-weight: 500;
 }
 
@@ -220,9 +235,9 @@
   display: block;
   margin-top: 8px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--text-small);
   font-weight: 400;
-  line-height: 16px;
+  line-height: var(--leading-small);
 }
 
 .table .actions {
@@ -320,7 +335,7 @@
   color: inherit;
   text-align: start;
   text-decoration: none;
-  font: 400 14px / 17px Inter, sans-serif;
+  font: 400 var(--text-small) / var(--leading-small) var(--font-ui);
 }
 
 .menuPanel button:hover:not(:disabled) {
@@ -407,6 +422,10 @@
     min-width: 490px;
   }
 
+  .table tr > :nth-child(2) {
+    padding-inline-start: 0;
+  }
+
   .menuPanel {
     --menu-enter-y: 4px;
     inset: auto 0 100% auto;
@@ -416,3 +435,63 @@
 
 .dialog .deleteError { color: var(--danger); }
 .page button:disabled { cursor: not-allowed; opacity: 0.65; }
+
+.tableFooter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 20px;
+  color: var(--muted);
+  font-size: var(--text-small);
+  line-height: var(--leading-small);
+}
+
+.tableFooter p {
+  margin: 0;
+}
+
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.pagination button,
+.pagination > span {
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  height: 36px;
+}
+
+.pagination button {
+  width: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.pagination button:is(:first-child, :last-child) {
+  background: var(--surface);
+  font-size: 20px;
+}
+
+.pagination button:hover:not(:disabled) {
+  background: var(--surface);
+}
+
+.pagination button[aria-current='page'] {
+  background: #eaf0f1;
+  font-weight: 500;
+}
+
+.pagination button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}

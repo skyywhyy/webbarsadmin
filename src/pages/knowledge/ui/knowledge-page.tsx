@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, DragEvent as ReactDragEvent, MouseEvent } from 'react'
 import { Toast, useToast } from '@/shared/ui/toast'
 import { useAnimatedRows } from '@/shared/ui/table'
@@ -23,6 +23,7 @@ const statusLabels = {
   skipped: 'Пропущено',
   unavailable: 'Не удалось проверить статус',
 }
+const documentsPerPage = 5
 const terminalStatuses = new Set(['succeeded', 'failed', 'skipped'])
 
 function documentCount(count: number) {
@@ -31,6 +32,7 @@ function documentCount(count: number) {
 
 export function KnowledgePage() {
   const [documents, setDocuments] = useState<KnowledgeDocument[]>([])
+  const [requestedPage, setRequestedPage] = useState(1)
   const { toast, showToast } = useToast()
   const { bodyRef, removeRow } = useAnimatedRows({ animateNewRows: true })
   const [documentToDelete, setDocumentToDelete] = useState<KnowledgeDocument | null>(null)
@@ -47,6 +49,19 @@ export function KnowledgePage() {
   const mutationInProgress = useRef(false)
   const pendingJobs = useRef(new Set<string>())
   const { dialog: modal, closeDialog } = useAnimatedDialog()
+
+  const pageCount = Math.max(1, Math.ceil(documents.length / documentsPerPage))
+  const currentPage = Math.min(requestedPage, pageCount)
+  const offset = (currentPage - 1) * documentsPerPage
+  const visibleDocuments = documents.slice(offset, offset + documentsPerPage)
+  const startPage = Math.max(1, Math.min(currentPage - 1, pageCount - 2))
+  const nearbyPages = Array.from({ length: Math.min(3, pageCount) }, (_, index) => startPage + index)
+  const pageNumbers = [...new Set([1, ...nearbyPages, pageCount])].sort((a, b) => a - b)
+
+  function changePage(page: number) {
+    const next = Math.max(1, Math.min(page, pageCount))
+    if (next !== currentPage) setRequestedPage(next)
+  }
 
   const activeJobIds = documents.filter((item) => !terminalStatuses.has(item.status ?? '')).map((item) => item.jobId).join(',')
 
@@ -153,6 +168,7 @@ export function KnowledgePage() {
       const job = previous ? await replaceDocument(previous.jobId, file) : await uploadDocument(file)
       if (previous) pendingJobs.current.delete(previous.jobId)
       pendingJobs.current.add(job.job_id)
+      setRequestedPage(1)
       setDocuments((current) => [
         { ...document, id: job.job_id, jobId: job.job_id, sourceId: job.source_id, status: 'queued' },
         ...current.filter((item) => !previous || (item.id !== previous.id && (!previous.sourceId || item.sourceId !== previous.sourceId))),
@@ -221,6 +237,8 @@ export function KnowledgePage() {
       pendingJobs.current.delete(item.jobId)
       await closeDialog()
       await removeRow(item.id, () => {
+        const remainingCount = documents.filter((entry) => entry.id !== item.id && (!item.sourceId || entry.sourceId !== item.sourceId)).length
+        setRequestedPage((page) => Math.min(page, Math.max(1, Math.ceil(remainingCount / documentsPerPage))))
         setDocuments((current) => current.filter((entry) => entry.id !== item.id && (!item.sourceId || entry.sourceId !== item.sourceId)))
         setDocumentsVersion((value) => value + 1)
       })
@@ -262,7 +280,7 @@ export function KnowledgePage() {
           </div>
           <input ref={fileInput} type="file" accept=".pdf,.docx,.txt" onChange={uploadFile} hidden />
           <input ref={replacementInput} type="file" accept=".pdf,.docx,.txt" onChange={uploadReplacement} hidden />
-          <button type="button" className={styles.secondary} aria-describedby="file-formats" disabled={isUploading || isDeleting} onClick={chooseFile}>
+          <button type="button" className={styles.primary} aria-describedby="file-formats" disabled={isUploading || isDeleting} onClick={chooseFile}>
             {isUploading ? 'Загрузка…' : 'Выбрать файл'}
           </button>
         </div>
@@ -282,64 +300,79 @@ export function KnowledgePage() {
             <p>Загрузите документ с устройства.</p>
           </div>
         ) : documents.length > 0 ? (
-          <div className={styles.tableWrap}>
-            <table className={styles.table} aria-labelledby="knowledge-documents">
-              <colgroup><col /><col /><col /><col /></colgroup>
-              <thead>
-                <tr>
-                  <th scope="col">Документ</th>
-                  <th scope="col">Дата добавления / изменения</th>
-                  <th scope="col">Статус</th>
-                  <th scope="col"><span className={styles.visuallyHidden}>Действия</span></th>
-                </tr>
-              </thead>
-              <tbody ref={bodyRef}>
-                {documents.map((item) => (
-                  <tr key={item.id} data-row-id={item.id}>
-                    <th scope="row">{item.name}<small>{item.description}</small></th>
-                    <td>{dateFormat.format(item.date)}</td>
-                    <td className={item.status === 'failed' || item.status === 'unavailable' ? styles.statusError : undefined} aria-live="polite">
-                      <span className={item.status === 'queued' || item.status === 'running' ? styles.processingStatus : undefined}>
-                        {item.status ? statusLabels[item.status] : 'Добавлен'}
-                      </span>
-                    </td>
-                    <td className={styles.actions}>
-                      <details
-                        className={styles.menu}
-                        onToggle={animateMenu}
-                        onBlur={(event) => {
-                          if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false
-                        }}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Escape' && event.currentTarget.open) {
-                            event.currentTarget.querySelector('summary')?.focus()
-                            event.currentTarget.open = false
-                          }
-                        }}
-                      >
-                        <summary className={styles.iconButton} aria-label={'Действия: ' + item.name}>···</summary>
-                        <div className={styles.menuPanel} data-menu-panel>
-                          <button type="button" onClick={(event) => {
-                            closeMenu(event)
-                            openDocument(item)
-                          }} disabled={!item.documentUrl && !item.file}>Открыть документ</button>
-                          <button type="button" onClick={(event) => {
-                            closeMenu(event)
-                            chooseReplacement(item)
-                          }} disabled={isUploading || isDeleting}>Заменить документ</button>
-                          <button type="button" onClick={(event) => {
-                            closeMenu(event)
-                            setDeleteError('')
-                            setDocumentToDelete(item)
-                          }} disabled={isUploading || isDeleting}>Удалить документ</button>
-                        </div>
-                      </details>
-                    </td>
+          <>
+            <div className={styles.tableWrap}>
+              <table className={styles.table} aria-labelledby="knowledge-documents">
+                <colgroup><col /><col /><col /><col /></colgroup>
+                <thead>
+                  <tr>
+                    <th scope="col">Документ</th>
+                    <th scope="col">Дата добавления / изменения</th>
+                    <th scope="col">Статус</th>
+                    <th scope="col"><span className={styles.visuallyHidden}>Действия</span></th>
                   </tr>
+                </thead>
+                <tbody ref={bodyRef}>
+                  {visibleDocuments.map((item) => (
+                    <tr key={item.id} data-row-id={item.id}>
+                      <th scope="row">{item.name}<small>{item.description}</small></th>
+                      <td>{dateFormat.format(item.date)}</td>
+                      <td className={item.status === 'failed' || item.status === 'unavailable' ? styles.statusError : undefined} aria-live="polite">
+                        <span className={item.status === 'queued' || item.status === 'running' ? styles.processingStatus : undefined}>
+                          {item.status ? statusLabels[item.status] : 'Добавлен'}
+                        </span>
+                      </td>
+                      <td className={styles.actions}>
+                        <details
+                          className={styles.menu}
+                          onToggle={animateMenu}
+                          onBlur={(event) => {
+                            if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Escape' && event.currentTarget.open) {
+                              event.currentTarget.querySelector('summary')?.focus()
+                              event.currentTarget.open = false
+                            }
+                          }}
+                        >
+                          <summary className={styles.iconButton} aria-label={'Действия: ' + item.name}>···</summary>
+                          <div className={styles.menuPanel} data-menu-panel>
+                            <button type="button" onClick={(event) => {
+                              closeMenu(event)
+                              openDocument(item)
+                            }} disabled={!item.documentUrl && !item.file}>Открыть документ</button>
+                            <button type="button" onClick={(event) => {
+                              closeMenu(event)
+                              chooseReplacement(item)
+                            }} disabled={isUploading || isDeleting}>Заменить документ</button>
+                            <button type="button" onClick={(event) => {
+                              closeMenu(event)
+                              setDeleteError('')
+                              setDocumentToDelete(item)
+                            }} disabled={isUploading || isDeleting}>Удалить документ</button>
+                          </div>
+                        </details>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <footer className={styles.tableFooter}>
+              <p aria-live="polite">Показано {offset + 1}–{offset + visibleDocuments.length} из {documents.length}</p>
+              <nav className={styles.pagination} aria-label="Страницы списка документов">
+                <button type="button" aria-label="Предыдущая страница" disabled={currentPage === 1 || isDeleting || isUploading} onClick={() => changePage(currentPage - 1)}>‹</button>
+                {pageNumbers.map((number, index) => (
+                  <Fragment key={number}>
+                    {index > 0 && number - pageNumbers[index - 1] > 1 && <span aria-hidden="true">…</span>}
+                    <button type="button" aria-label={'Страница ' + number} aria-current={number === currentPage ? 'page' : undefined} disabled={isDeleting || isUploading} onClick={() => changePage(number)}>{number}</button>
+                  </Fragment>
                 ))}
-              </tbody>
-            </table>
-          </div>
+                <button type="button" aria-label="Следующая страница" disabled={currentPage === pageCount || isDeleting || isUploading} onClick={() => changePage(currentPage + 1)}>›</button>
+              </nav>
+            </footer>
+          </>
         ) : null}
       </section>
 

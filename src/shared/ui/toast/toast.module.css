@@ -21,7 +21,7 @@
   background: #fff;
   box-shadow: 0 4px 16px #11171914;
   color: #111719;
-  font: 400 14px / 17px 'Golos Text', sans-serif;
+  font: 400 var(--text-small) / var(--leading-small) var(--font-ui);
   overflow-wrap: anywhere;
   animation-name: toastLifetime;
   animation-timing-function: linear;
