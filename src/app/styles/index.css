@@ -10,6 +10,10 @@
   --leading-small: 20px;
 }
 
+html {
+  scrollbar-gutter: stable;
+}
+
 body {
   margin: 0;
   font: 400 var(--text-body) / var(--leading-body) var(--font-ui);
