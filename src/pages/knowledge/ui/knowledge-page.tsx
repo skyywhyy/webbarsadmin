@@ -4,6 +4,7 @@ import { Toast, useToast } from '@/shared/ui/toast'
 import { useAnimatedRows } from '@/shared/ui/table'
 import { useAnimatedDialog } from '@/shared/ui/dialog'
 import { animateMenu } from '@/shared/ui/menu'
+import { Select } from '@/shared/ui/select'
 import { documentFromFile, loadDocuments, loadJob, removeDocument, replaceDocument, uploadDocument } from '../model/documents'
 import type { KnowledgeDocument } from '../model/documents'
 import styles from './knowledge-page.module.css'
@@ -33,6 +34,7 @@ function documentCount(count: number) {
 export function KnowledgePage() {
   const [documents, setDocuments] = useState<KnowledgeDocument[]>([])
   const [requestedPage, setRequestedPage] = useState(1)
+  const [format, setFormat] = useState('all')
   const { toast, showToast } = useToast()
   const { bodyRef, removeRow } = useAnimatedRows({ animateNewRows: true })
   const [documentToDelete, setDocumentToDelete] = useState<KnowledgeDocument | null>(null)
@@ -50,13 +52,20 @@ export function KnowledgePage() {
   const pendingJobs = useRef(new Set<string>())
   const { dialog: modal, closeDialog } = useAnimatedDialog()
 
-  const pageCount = Math.max(1, Math.ceil(documents.length / documentsPerPage))
+  const formats = [...new Set([...documents.map((item) => item.format), ...(format === 'all' ? [] : [format])])].sort()
+  const filteredDocuments = format === 'all' ? documents : documents.filter((item) => item.format === format)
+  const pageCount = Math.max(1, Math.ceil(filteredDocuments.length / documentsPerPage))
   const currentPage = Math.min(requestedPage, pageCount)
   const offset = (currentPage - 1) * documentsPerPage
-  const visibleDocuments = documents.slice(offset, offset + documentsPerPage)
+  const visibleDocuments = filteredDocuments.slice(offset, offset + documentsPerPage)
   const startPage = Math.max(1, Math.min(currentPage - 1, pageCount - 2))
   const nearbyPages = Array.from({ length: Math.min(3, pageCount) }, (_, index) => startPage + index)
   const pageNumbers = [...new Set([1, ...nearbyPages, pageCount])].sort((a, b) => a - b)
+
+  function changeFormat(nextFormat: string) {
+    setFormat(nextFormat)
+    setRequestedPage(1)
+  }
 
   function changePage(page: number) {
     const next = Math.max(1, Math.min(page, pageCount))
@@ -253,7 +262,7 @@ export function KnowledgePage() {
       pendingJobs.current.delete(item.jobId)
       await closeDialog()
       await removeRow(item.id, () => {
-        const remainingCount = documents.filter((entry) => entry.id !== item.id && (!item.sourceId || entry.sourceId !== item.sourceId)).length
+        const remainingCount = filteredDocuments.filter((entry) => entry.id !== item.id && (!item.sourceId || entry.sourceId !== item.sourceId)).length
         setRequestedPage((page) => Math.min(page, Math.max(1, Math.ceil(remainingCount / documentsPerPage))))
         setDocuments((current) => current.filter((entry) => entry.id !== item.id && (!item.sourceId || entry.sourceId !== item.sourceId)))
         setDocumentsVersion((value) => value + 1)
@@ -304,18 +313,22 @@ export function KnowledgePage() {
 
       <section className={styles.documentList} aria-labelledby="knowledge-documents">
         <header className={styles.documentHeading}>
-          <h2 id="knowledge-documents">Документы в базе знаний</h2>
-          <span>{documentCount(documents.length)}</span>
+          <div className={styles.documentTitle}>
+            <h2 id="knowledge-documents">Документы в базе знаний</h2>
+            <span className={styles.documentCount} aria-live="polite">{documentCount(filteredDocuments.length)}</span>
+          </div>
+          {(documents.length > 0 || format !== 'all') && <Select className={styles.formatFilter} label="Формат" value={format} onChange={changeFormat} options={[{ value: 'all', label: 'Все форматы' }, ...formats.map((value) => ({ value, label: value }))]} />}
         </header>
         {documentsError && !isLoadingDocuments && <div role="alert" className={styles.documentsError}><span>{documentsError}</span><button type="button" className={styles.secondary} onClick={() => { setIsLoadingDocuments(true); setDocumentsVersion((value) => value + 1) }}>Повторить</button></div>}
         {documents.length === 0 && isLoadingDocuments ? (
           <div className={styles.emptyState}><h3>Загружаем документы</h3></div>
-        ) : documents.length === 0 && !documentsError ? (
+        ) : filteredDocuments.length === 0 && !documentsError ? (
           <div className={styles.emptyState}>
-            <h3>Документов пока нет</h3>
-            <p>Загрузите документ с устройства.</p>
+            <h3>{format === 'all' ? 'Документов пока нет' : 'Нет документов этого формата'}</h3>
+            <p>{format === 'all' ? 'Загрузите документ с устройства.' : 'Выберите другой формат или покажите все документы.'}</p>
+            {format !== 'all' && <button type="button" className={styles.secondary} disabled={isUploading || isDeleting} onClick={() => changeFormat('all')}>Показать все</button>}
           </div>
-        ) : documents.length > 0 ? (
+        ) : filteredDocuments.length > 0 ? (
           <>
             <div className={styles.tableWrap}>
               <table className={styles.table} aria-labelledby="knowledge-documents">
@@ -376,7 +389,7 @@ export function KnowledgePage() {
               </table>
             </div>
             <footer className={styles.tableFooter}>
-              <p aria-live="polite">Показано {offset + 1}–{offset + visibleDocuments.length} из {documents.length}</p>
+              <p aria-live="polite">Показано {offset + 1}–{offset + visibleDocuments.length} из {filteredDocuments.length}</p>
               <nav className={styles.pagination} aria-label="Страницы списка документов">
                 <button type="button" aria-label="Предыдущая страница" disabled={currentPage === 1 || isDeleting || isUploading} onClick={() => changePage(currentPage - 1)}>‹</button>
                 {pageNumbers.map((number, index) => (

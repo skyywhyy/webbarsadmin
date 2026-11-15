@@ -156,15 +156,33 @@
 
 .documentHeading {
   display: flex;
-  align-items: baseline;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 18px;
   margin-bottom: 21px;
 }
 
-.documentHeading span {
+.documentTitle {
+  display: grid;
+  gap: 6px;
+}
+
+.documentCount {
   color: var(--muted);
+  font-size: var(--text-small);
+  line-height: var(--leading-small);
   white-space: nowrap;
+}
+
+.formatFilter {
+  flex-shrink: 0;
+  width: 200px;
+  max-width: 100%;
+}
+
+.emptyState button {
+  justify-self: center;
+  margin-top: 8px;
 }
 
 .documentsError {

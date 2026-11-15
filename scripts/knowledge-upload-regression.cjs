@@ -7,7 +7,7 @@ const ts = require(root + '/node_modules/typescript')
 function compile(relative, modules) {
   const exports = {}
   const code = ts.transpileModule(fs.readFileSync(path.join(root, relative), 'utf8'), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
+    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
   }).outputText
   vm.runInNewContext(code, { exports, require: name => {
     if (!(name in modules)) throw new Error('Unexpected import: ' + name)
@@ -21,7 +21,7 @@ async function scenario(run) {
   let responder = async (url, options) => ({ job_id: 'job-' + requests.length, source_id: 'source-' + requests.length })
   const docs = compile('src/pages/knowledge/model/documents.ts', {
     '@/shared/api/client': { request: async (url, options) => {
-      requests.push({ url, options, name: options.body.get('file').name })
+      requests.push({ url, options, name: options.body?.get('file').name })
       return responder(url, options)
     } },
   })
@@ -31,9 +31,10 @@ async function scenario(run) {
       useState(value) { const index = si++; if (!(index in state)) state[index] = value; return [state[index], next => { state[index] = typeof next === 'function' ? next(state[index]) : next }] } },
     'react/jsx-runtime': { jsx, jsxs: jsx },
     '@/shared/ui/toast': { Toast: 'toast', useToast: () => ({ toast: '', showToast: (...args) => toasts.push(args) }) },
-    '@/shared/ui/table': { useAnimatedRows: () => ({ bodyRef: {}, removeRow() {} }) },
+    '@/shared/ui/table': { useAnimatedRows: () => ({ bodyRef: {}, removeRow(_id, onRemove) { onRemove() } }) },
     '@/shared/ui/dialog': { useAnimatedDialog: () => ({ dialog: {}, closeDialog() {} }) },
     '@/shared/ui/menu': { animateMenu() {} },
+    '@/shared/ui/select': { Select: 'format-select' },
     '../model/documents': docs,
     './knowledge-page.module.css': new Proxy({}, { get: (_, key) => key }),
   })
@@ -121,7 +122,56 @@ async function main() {
     assert.equal(requests.at(-1).name, 'replacement.txt')
     assert.ok(!JSON.stringify(render()).includes('original.pdf'))
   })
-  console.log('PASS: picker, batch drop, partial failures, two upload slots, upload lock, replacement')
+  await scenario(async ({ drop, file, settle, render }) => {
+    drop([...Array.from({ length: 6 }, (_, i) => file(`guide-${i}.pdf`)), file('policy.docx'), file('report.docx'), file('notes.txt')])
+    await settle()
+    const selectFormat = format => {
+      const control = render().find(n => n.type === 'format-select')
+      const option = control?.props.options.find(option => option.label === format)
+      assert.ok(option, `Format filter must include ${format}`)
+      control.props.onChange(option.value)
+    }
+    const rows = () => render().filter(n => n.type === 'tr' && n.props['data-row-id'])
+    const footer = () => render().find(n => n.type === 'p' && n.props['aria-live'] === 'polite').props.children.join('')
+    render().find(n => n.type === 'button' && n.props['aria-label'] === 'Страница 2').props.onClick()
+    selectFormat('DOCX')
+    assert.equal(rows().length, 2, 'Filtering must search all documents, including other pages')
+    assert.ok(rows().every(row => JSON.stringify(row).includes('.docx')))
+    assert.equal(footer(), 'Показано 1–2 из 2', 'Changing format must reset page and filtered count')
+    assert.ok(!render().some(n => n.type === 'button' && n.props['aria-label'] === 'Страница 2'))
+    selectFormat('PDF')
+    assert.equal(rows().length, 5)
+    assert.equal(footer(), 'Показано 1–5 из 6')
+    render().find(n => n.type === 'button' && n.props['aria-label'] === 'Следующая страница').props.onClick()
+    assert.equal(rows().length, 1)
+    assert.equal(footer(), 'Показано 6–6 из 6')
+    selectFormat('Все форматы')
+    assert.equal(footer(), 'Показано 1–5 из 9', 'Reset must restore all formats on the first page')
+  })
+  await scenario(async ({ drop, file, settle, render }) => {
+    drop([file('original.docx')]); await settle()
+    render().find(n => n.type === 'format-select').props.onChange('DOCX')
+    render().find(n => n.type === 'button' && n.props.children === 'Заменить документ').props.onClick({ currentTarget: { closest: () => null } })
+    const replacement = render().filter(n => n.type === 'input' && n.props.type === 'file')[1]
+    replacement.props.onChange({ currentTarget: { files: [file('replacement.txt')], value: 'selection' } })
+    await settle()
+    assert.ok(render().some(n => n.type === 'h3' && n.props.children === 'Нет документов этого формата'), 'Replacing the last matching document must show a filter empty state')
+    assert.ok(render().some(n => n.type === 'format-select' && n.props.value === 'DOCX' && n.props.options.some(option => option.value === 'DOCX')), 'Selected format must remain available when it has no matches')
+    render().find(n => n.type === 'button' && n.props.children === 'Показать все').props.onClick()
+    assert.ok(JSON.stringify(render().filter(n => n.type === 'tr')).includes('replacement.txt'))
+  })
+  await scenario(async ({ drop, file, settle, render }) => {
+    drop([...Array.from({ length: 6 }, (_, i) => file(`policy-${i}.docx`)), ...Array.from({ length: 5 }, (_, i) => file(`guide-${i}.pdf`))])
+    await settle()
+    render().find(n => n.type === 'format-select').props.onChange('DOCX')
+    render().find(n => n.type === 'button' && n.props['aria-label'] === 'Страница 2').props.onClick()
+    render().find(n => n.type === 'button' && n.props.children === 'Удалить документ').props.onClick({ currentTarget: { closest: () => null } })
+    render().find(n => n.type === 'button' && n.props.children === 'Удалить').props.onClick()
+    await settle()
+    const footer = render().find(n => n.type === 'p' && n.props['aria-live'] === 'polite').props.children.join('')
+    assert.equal(footer, 'Показано 1–5 из 5', 'Deleting the last row must clamp the page using the filtered count')
+  })
+  console.log('PASS: picker, batch drop, partial failures, two upload slots, upload lock, replacement, format filtering, filtered pagination, empty state, filtered deletion')
 }
 main().catch(error => { console.error(error); process.exitCode = 1 })
 
