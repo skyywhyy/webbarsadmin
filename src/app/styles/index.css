@@ -1,13 +1,26 @@
-@font-face {
-  font-family: Inter;
-  src: url('../../assets/inter-variable.woff2') format('woff2');
-  font-style: normal;
-  font-weight: 100 900;
-  font-display: swap;
+:root {
+  --font-ui: 'Golos Text', Arial, sans-serif;
+  --text-title: clamp(34px, 3.4vw, 48px);
+  --text-heading: 24px;
+  --text-body: 16px;
+  --text-small: 14px;
+  --leading-title: 1.2;
+  --leading-heading: 30px;
+  --leading-body: 24px;
+  --leading-small: 20px;
 }
 
 body {
   margin: 0;
+  font: 400 var(--text-body) / var(--leading-body) var(--font-ui);
+}
+
+button,
+input,
+select,
+textarea,
+dialog {
+  font: inherit;
 }
 
 dialog[open] {

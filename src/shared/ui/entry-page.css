@@ -4,7 +4,7 @@
   padding: 32px 40px;
   background: #fff;
   color: #171b1d;
-  font-family: Arial, sans-serif;
+  font: 400 var(--text-body) / var(--leading-body) var(--font-ui);
 }
 
 .entry-brand {
@@ -18,15 +18,15 @@
 
 .entry-content h1 {
   margin: 0;
-  font-size: 36px;
-  line-height: 1.2;
-  font-weight: 600;
+  font-size: var(--text-title);
+  line-height: var(--leading-title);
+  font-weight: 500;
 }
 
 .entry-description {
   margin: 12px 0 36px;
   color: #718693;
-  font-size: 15px;
+  font-size: var(--text-body);
 }
 
 .entry-action {
@@ -39,8 +39,7 @@
   border-radius: 4px;
   background: #171b1d;
   color: white;
-  font: inherit;
-  font-size: 15px;
+  font: 500 var(--text-small) / var(--leading-small) var(--font-ui);
   text-decoration: none;
   cursor: pointer;
 }
@@ -61,9 +60,5 @@
 
   .entry-content {
     margin-top: 100px;
-  }
-
-  .entry-content h1 {
-    font-size: 30px;
   }
 }
