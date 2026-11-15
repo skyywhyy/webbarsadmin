@@ -1,23 +1,23 @@
 # WebBars Admin
 
-Administration panel for a Telegram support service: analytics, employee management, and a document knowledge base.
+Панель управления службой поддержки в Telegram: аналитика, сотрудники и база знаний из документов.
 
-Built with React 19, TypeScript, Vite, React Router, and CSS Modules.
+Стек: React 19, TypeScript, Vite, React Router и CSS Modules.
 
-## Features
+## Возможности
 
-| Section | Functionality |
+| Раздел | Возможности |
 | --- | --- |
-| Analytics | Request timing, token usage, request costs, document uploads, file volume, and processing time. Periods: one hour, 24 hours, and seven days. |
-| Employees | Add, edit, and delete employees. Create Telegram invitation links for one or multiple employees, with an optional expiration time. |
-| Knowledge base | Upload multiple PDF, DOCX, or TXT files, track processing status, filter by format, and open, replace, or delete documents. |
-| Sign-in | Email and password authentication against the backend. |
+| Аналитика | Время ответа, расход токенов, стоимость обращений, загрузки документов, объём файлов и время обработки. Периоды: час, сутки и семь дней. |
+| Сотрудники | Добавление, редактирование и удаление сотрудников. Ссылки для приглашения одного или нескольких сотрудников в Telegram с необязательным сроком действия. |
+| База знаний | Загрузка нескольких файлов PDF, DOCX или TXT, отслеживание обработки, фильтрация по формату, открытие, замена и удаление документов. |
+| Вход | Авторизация по электронной почте и паролю через API. |
 
-Analytics values and lists come from the API. Chart percentages and average tokens per response are calculated in the frontend from the returned data. Document format names are taken from uploaded-file records.
+Показатели аналитики и списки загружаются из API. Проценты на диаграммах и среднее число токенов на ответ рассчитываются на клиенте по полученным данным. Названия форматов берутся из записей о загруженных файлах.
 
-## Local setup
+## Локальный запуск
 
-Use Node.js **22.12 or newer**. The full supported range is `^20.19.0 || >=22.12.0`, as declared in [package.json](./package.json).
+Рекомендуется Node.js **22.12 или новее**. Полный диапазон поддерживаемых версий указан в [package.json](./package.json): `^20.19.0 || >=22.12.0`.
 
 ```sh
 git clone https://github.com/skyywhyy/webbarsadmin.git
@@ -26,20 +26,20 @@ npm ci
 npm run dev
 ```
 
-Open the local URL printed by Vite. Sign in with an existing backend account.
+Откройте локальный адрес из вывода Vite. Для входа нужна существующая учётная запись на сервере.
 
-The current setup does not require an `.env` file. API requests are sent to the configured backend service.
+В текущей конфигурации файл `.env` не требуется. Запросы отправляются на настроенный сервер API.
 
-## Commands
+## Команды
 
-| Command | Purpose |
+| Команда | Назначение |
 | --- | --- |
-| `npm run dev` | Start the development server. |
-| `npm run lint` | Run ESLint. |
-| `npm run build` | Check TypeScript types and build the app into `build/`. |
-| `npm run preview` | Serve the production build locally after running the build command. |
+| `npm run dev` | Запустить сервер разработки. |
+| `npm run lint` | Проверить код с помощью ESLint. |
+| `npm run build` | Проверить типы TypeScript и собрать приложение в `build/`. |
+| `npm run preview` | Локально запустить предварительный просмотр готовой сборки. Сначала выполните `npm run build`. |
 
-Run the regression checks individually:
+Проверки на регрессии запускаются отдельно:
 
 ```sh
 node scripts/document-analytics-api-regression.cjs
@@ -48,43 +48,43 @@ node scripts/invite-lifetime-regression.cjs
 node scripts/knowledge-upload-regression.cjs
 ```
 
-These cover document analytics and periods, format charts, invitation expiration, and document upload and management flows. They use local fixtures and do not require a running backend.
+Они охватывают аналитику документов и периоды, диаграмму форматов, срок действия приглашений, загрузку и управление документами. Проверки используют локальные тестовые данные и не требуют работающего сервера API.
 
-## API integration
+## Подключение к API
 
-Backend: [api.cheremha.ru](https://api.cheremha.ru) · [API documentation](https://api.cheremha.ru/docs#/)
+Сервер: [api.cheremha.ru](https://api.cheremha.ru) · [Документация API](https://api.cheremha.ru/docs#/)
 
-Browser requests use the `/api` prefix. The shared client in [src/shared/api/client.ts](./src/shared/api/client.ts) attaches the access token to authenticated requests. The token is stored in `sessionStorage`; an authenticated request returning `401` clears the token and redirects to sign-in.
+Запросы из браузера используют префикс `/api`. Общий клиент в [src/shared/api/client.ts](./src/shared/api/client.ts) добавляет токен доступа к запросам, требующим авторизации. Токен хранится в `sessionStorage`. Если такой запрос возвращает `401`, токен удаляется, а пользователь переходит на страницу входа.
 
-The backend address is configured in two places:
+Адрес сервера настроен в двух местах:
 
-- [vite.config.ts](./vite.config.ts): development proxy.
-- [vercel.json](./vercel.json): deployed API rewrite.
+- [vite.config.ts](./vite.config.ts) — прокси для локальной разработки.
+- [vercel.json](./vercel.json) — перенаправление запросов API на Vercel.
 
-Update both when changing the backend URL.
+При смене адреса сервера обновите оба файла.
 
-The main API resources are `/auth/login`, `/employees`, `/invites`, `/rag/documents`, `/rag/jobs`, and `/analytics/*`. The backend is maintained separately from this repository.
+Основные ресурсы API: `/auth/login`, `/employees`, `/invites`, `/rag/documents`, `/rag/jobs` и `/analytics/*`. Серверная часть разрабатывается отдельно от этого репозитория.
 
-## Project structure
+## Структура проекта
 
 ```text
 src/
-  app/                 Routes, layouts, and global styles
-  entities/sidebar/    Main navigation
-  pages/home/          Request and document analytics
-  pages/support-team/  Employees and invitations
-  pages/knowledge/     Document uploads and management
-  pages/login/         Sign-in
-  pages/not-found/     Missing-route page
-  shared/api/          HTTP client and token storage
-  shared/ui/           Reusable controls, dialogs, tables, and notifications
-scripts/               Regression checks
+  app/                 Маршруты, макеты страниц и глобальные стили
+  entities/sidebar/    Основная навигация
+  pages/home/          Аналитика обращений и документов
+  pages/support-team/  Сотрудники и приглашения
+  pages/knowledge/     Загрузка и управление документами
+  pages/login/         Вход
+  pages/not-found/     Страница для неизвестного маршрута
+  shared/api/          HTTP-клиент и хранение токена
+  shared/ui/           Общие элементы управления, диалоги, таблицы и уведомления
+scripts/               Проверки на регрессии
 ```
 
-The `@/` import alias points to `src/`.
+Псевдоним `@/` в импортах указывает на `src/`.
 
-## Deployment
+## Развёртывание
 
-[vercel.json](./vercel.json) configures Vercel to publish `build/`, forward `/api/*` requests to the backend, and serve `index.html` for frontend routes.
+В [vercel.json](./vercel.json) настроены публикация каталога `build/`, передача запросов `/api/*` на сервер API и выдача `index.html` для маршрутов приложения.
 
-For another hosting provider, use `npm run build`, publish `build/`, and configure the same API proxy and SPA fallback so that direct visits to `/employees` and `/knowledge` work.
+Для другого хостинга выполните `npm run build`, опубликуйте каталог `build/` и настройте такой же прокси API. Для маршрутов приложения сервер должен возвращать `index.html`, чтобы прямые переходы на `/employees` и `/knowledge` работали.
