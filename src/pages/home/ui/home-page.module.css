@@ -614,9 +614,19 @@
 
 .analytics .responseFacts {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 24px;
-  margin-top: 24px;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  column-gap: clamp(28px, 4cqw, 48px);
+  row-gap: 8px;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+
+.responseFacts > div {
+  display: grid;
+  grid-template-rows: subgrid;
+  grid-row: span 2;
+  min-width: 0;
 }
 
 .responseFacts dt {
@@ -626,7 +636,9 @@
 }
 
 .responseFacts dd {
-  margin-top: 8px;
+  display: flex;
+  align-items: baseline;
+  margin-top: 0;
   font-size: 36px;
   font-weight: 500;
   line-height: 44px;
@@ -638,6 +650,21 @@
   color: #52636b;
   font-size: var(--text-small);
   font-weight: 400;
+  line-height: var(--leading-small);
+}
+
+@container (max-width: 620px) {
+  .analytics .responseFacts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 24px;
+  }
+}
+
+@container (max-width: 340px) {
+  .analytics .responseFacts {
+    grid-template-columns: 1fr;
+    row-gap: 16px;
+  }
 }
 
 /* Match the timing and easing used by menus, forms, and table rows. */
