@@ -1,7 +1,7 @@
 import { request } from '@/shared/api/client'
 import { toAnalyticsDocument } from './analytics'
 import type { AnalyticsDocument, DocumentJob } from './analytics'
-import type { TechnicalAnalytics, TechnicalRange } from './technical-analytics'
+import type { RequestCost, TechnicalAnalytics, TechnicalRange } from './technical-analytics'
 
 type DocumentPage = { items: DocumentJob[]; total: number }
 
@@ -10,7 +10,7 @@ export async function loadAnalyticsDocuments(signal: AbortSignal): Promise<Analy
   let page = 1
   let result: DocumentPage
   do {
-    result = await request<DocumentPage>('/rag/jobs?' + new URLSearchParams({ page: String(page), page_size: '100' }), { signal })
+    result = await request<DocumentPage>('/rag/jobs?' + new URLSearchParams({ page: String(page), page_size: '100', include_history: 'true' }), { signal })
     documents.push(...result.items.map(toAnalyticsDocument))
     page += 1
   } while (result.items.length > 0 && documents.length < result.total)
@@ -19,4 +19,8 @@ export async function loadAnalyticsDocuments(signal: AbortSignal): Promise<Analy
 
 export function loadTechnicalAnalytics(range: TechnicalRange, signal: AbortSignal) {
   return request<TechnicalAnalytics>('/analytics/technical?' + new URLSearchParams({ range }), { signal })
+}
+
+export function loadRequestCost(fromAt: string, toAt: string, signal: AbortSignal) {
+  return request<RequestCost>('/analytics/request-cost?' + new URLSearchParams({ from_at: fromAt, to_at: toAt }), { signal })
 }

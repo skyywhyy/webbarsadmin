@@ -141,9 +141,9 @@ export function KnowledgePage() {
   }
 
   function uploadFile(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.currentTarget.files?.[0]
+    const files = Array.from(event.currentTarget.files ?? [])
     event.currentTarget.value = ''
-    if (file) void addFile(file)
+    void addFiles(files)
   }
 
   function chooseReplacement(item: KnowledgeDocument) {
@@ -156,27 +156,49 @@ export function KnowledgePage() {
     const previous = replacementTarget.current
     event.currentTarget.value = ''
     replacementTarget.current = null
-    if (file && previous) void addFile(file, previous)
+    if (file && previous) void addFiles([file], previous)
   }
 
-  async function addFile(file: File, previous?: KnowledgeDocument) {
-    if (mutationInProgress.current) return
+  async function addFiles(files: File[], previous?: KnowledgeDocument) {
+    if (!files.length) return
+    if (mutationInProgress.current) {
+      showToast('Дождитесь завершения текущей операции и добавьте файлы ещё раз.', 'error')
+      return
+    }
+    mutationInProgress.current = true
+    setIsUploading(true)
+    let uploaded = 0
+    const failed: string[] = []
     try {
-      const document = documentFromFile(file)
-      mutationInProgress.current = true
-      setIsUploading(true)
-      const job = previous ? await replaceDocument(previous.jobId, file) : await uploadDocument(file)
-      if (previous) pendingJobs.current.delete(previous.jobId)
-      pendingJobs.current.add(job.job_id)
-      setRequestedPage(1)
-      setDocuments((current) => [
-        { ...document, id: job.job_id, jobId: job.job_id, sourceId: job.source_id, status: 'queued' },
-        ...current.filter((item) => !previous || (item.id !== previous.id && (!previous.sourceId || item.sourceId !== previous.sourceId))),
-      ])
-      setDocumentsVersion((value) => value + 1)
-      showToast(previous ? 'Новый файл отправлен на обработку' : 'Файл отправлен на обработку')
-    } catch (error) {
-      showToast(error instanceof Error && error.message === 'Выберите непустой файл PDF, DOCX или TXT.' ? error.message : previous ? 'Не удалось заменить документ. Попробуйте ещё раз.' : 'Не удалось загрузить файл. Попробуйте ещё раз.', 'error')
+      let nextIndex = 0
+      async function uploadNext() {
+        while (nextIndex < files.length) {
+          const file = files[nextIndex++]
+          try {
+            const document = documentFromFile(file)
+            const job = previous ? await replaceDocument(previous.jobId, file) : await uploadDocument(file)
+            if (previous) pendingJobs.current.delete(previous.jobId)
+            pendingJobs.current.add(job.job_id)
+            setRequestedPage(1)
+            setDocuments((current) => [
+              { ...document, id: job.job_id, jobId: job.job_id, sourceId: job.source_id, status: 'queued' },
+              ...current.filter((item) => !previous || (item.id !== previous.id && (!previous.sourceId || item.sourceId !== previous.sourceId))),
+            ])
+            uploaded += 1
+          } catch (error) {
+            const reason = error instanceof Error && error.message === 'Выберите непустой файл PDF, DOCX или TXT.'
+              ? 'нужен непустой файл PDF, DOCX или TXT' : 'ошибка загрузки'
+            failed.push(file.name + ' — ' + reason)
+          }
+        }
+      }
+      await Promise.all(Array.from({ length: Math.min(2, files.length) }, () => uploadNext()))
+      if (uploaded) setDocumentsVersion((value) => value + 1)
+      if (failed.length) {
+        showToast((uploaded ? 'Отправлено на обработку: ' + uploaded + '. ' : '') + 'Не удалось загрузить: ' + failed.join('; ') + '. Попробуйте ещё раз.', 'error')
+      } else {
+        showToast(previous ? 'Новый файл отправлен на обработку' : uploaded === 1 ? 'Файл отправлен на обработку' : 'Отправлено на обработку: ' + uploaded)
+      }
     } finally {
       mutationInProgress.current = false
       setIsUploading(false)
@@ -194,13 +216,7 @@ export function KnowledgePage() {
     event.preventDefault()
     setIsDraggingFile(false)
 
-    const files = event.dataTransfer.files
-    if (files.length !== 1) {
-      showToast('Перетащите один файл PDF, DOCX или TXT.', 'error')
-      return
-    }
-
-    void addFile(files[0])
+    void addFiles(Array.from(event.dataTransfer.files))
   }
 
   function closeMenu(event: MouseEvent<HTMLElement>) {
@@ -258,7 +274,7 @@ export function KnowledgePage() {
 
       <section className={styles.addMaterial} aria-labelledby="add-material-heading">
         <h2 id="add-material-heading">Добавить материал</h2>
-        <p className={styles.intro}>Загрузите документ с устройства</p>
+        <p className={styles.intro}>Загрузите один или несколько документов с устройства</p>
 
         <div
           className={styles.upload}
@@ -275,13 +291,13 @@ export function KnowledgePage() {
           onDrop={dropFile}
         >
           <div>
-            <h3>{isDraggingFile ? 'Отпустите файл, чтобы добавить' : 'Перетащите файл сюда'}</h3>
+            <h3>{isDraggingFile ? 'Отпустите файлы, чтобы добавить' : 'Перетащите файлы сюда'}</h3>
             <p id="file-formats">PDF, DOCX или TXT</p>
           </div>
-          <input ref={fileInput} type="file" accept=".pdf,.docx,.txt" onChange={uploadFile} hidden />
+          <input ref={fileInput} type="file" multiple accept=".pdf,.docx,.txt" onChange={uploadFile} hidden />
           <input ref={replacementInput} type="file" accept=".pdf,.docx,.txt" onChange={uploadReplacement} hidden />
           <button type="button" className={styles.primary} aria-describedby="file-formats" disabled={isUploading || isDeleting} onClick={chooseFile}>
-            {isUploading ? 'Загрузка…' : 'Выбрать файл'}
+            {isUploading ? 'Загрузка…' : 'Выбрать файлы'}
           </button>
         </div>
       </section>

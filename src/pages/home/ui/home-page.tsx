@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { KeyboardEvent } from 'react'
+import { Select } from '@/shared/ui/select'
 import { DocumentAnalytics } from './document-analytics'
 import { RequestAnalytics } from './request-analytics'
 import { technicalRanges } from '../model/technical-analytics'
@@ -8,6 +9,18 @@ import type { AnalyticsPeriod } from '../model/analytics'
 import styles from './home-page.module.css'
 
 const tabs = [{ id: 'requests', label: 'Обращения' }, { id: 'documents', label: 'Документы' }] as const
+const documentPeriods = [
+  { value: '7d', label: 'За 7 дней' },
+  { value: '30d', label: 'За 30 дней' },
+  { value: 'all', label: 'За всё время' },
+] as const
+
+const calendarIcon = (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="5" width="18" height="16" rx="2" />
+    <path d="M7 3v4M17 3v4M3 10h18" />
+  </svg>
+)
 
 export function HomePage() {
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]['id']>('requests')
@@ -30,28 +43,11 @@ export function HomePage() {
     <main className={styles.analytics}>
       <header className={styles.header}>
         <h1>Аналитика обращений</h1>
-        <label className={styles.period}>
-          Период
-          <span className={styles.periodField}>
-            {activeTab === 'requests' ? (
-              <select key="requests" className={styles.periodSelect} value={range} onChange={(event) => setRange(event.target.value as TechnicalRange)}>
-                {technicalRanges.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-              </select>
-            ) : (
-              <select key="documents" className={styles.periodSelect} value={period} onChange={(event) => setPeriod(event.target.value as AnalyticsPeriod)}>
-                <option value="7d">За 7 дней</option>
-                <option value="30d">За 30 дней</option>
-                <option value="all">За всё время</option>
-              </select>
-            )}
-            <span className={styles.periodIcon} aria-hidden="true">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="5" width="18" height="16" rx="2" />
-                <path d="M7 3v4M17 3v4M3 10h18" />
-              </svg>
-            </span>
-          </span>
-        </label>
+        {activeTab === 'requests' ? (
+          <Select<TechnicalRange> key="requests" className={styles.period} label="Период" value={range} onChange={setRange} options={technicalRanges} icon={calendarIcon} />
+        ) : (
+          <Select<AnalyticsPeriod> key="documents" className={styles.period} label="Период" value={period} onChange={setPeriod} options={documentPeriods} icon={calendarIcon} />
+        )}
       </header>
 
       <div className={styles.tabs} role="tablist" aria-label="Разделы аналитики">
@@ -63,11 +59,11 @@ export function HomePage() {
       </div>
 
       {activeTab === 'requests' ? (
-        <div role="tabpanel" id="analytics-panel-requests" aria-labelledby="analytics-tab-requests">
+        <div key="requests" className={styles.tabPanel} role="tabpanel" id="analytics-panel-requests" aria-labelledby="analytics-tab-requests">
           <RequestAnalytics key={range} range={range} />
         </div>
       ) : (
-        <div role="tabpanel" id="analytics-panel-documents" aria-labelledby="analytics-tab-documents"><DocumentAnalytics period={period} /></div>
+        <div key="documents" className={styles.tabPanel} role="tabpanel" id="analytics-panel-documents" aria-labelledby="analytics-tab-documents"><DocumentAnalytics period={period} /></div>
       )}
     </main>
   )
