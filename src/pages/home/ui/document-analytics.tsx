@@ -4,9 +4,7 @@ import { filterDocuments, formatBytes, summarizeDocuments } from '../model/analy
 import type { AnalyticsPeriod, DocumentSizeFilter } from '../model/analytics'
 import styles from './home-page.module.css'
 
-const statusLabels = { queued: 'В очереди', running: 'Обрабатывается', succeeded: 'Готово', failed: 'Ошибка обработки', skipped: 'Пропущено' }
 const numberFormat = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 1 })
-const pageSize = 8
 const chartFormats = ['PDF', 'DOCX', 'TXT'] as const
 const ticks = [0, 0.25, 0.5, 0.75, 1]
 
@@ -14,7 +12,6 @@ export function DocumentAnalytics({ period }: { period: AnalyticsPeriod }) {
   const [documents] = useState(() => createDemoDocuments())
   const [format, setFormat] = useState('all')
   const [size, setSize] = useState<DocumentSizeFilter>('all')
-  const [pagination, setPagination] = useState({ key: '', page: 1 })
   const formats = [...new Set(documents.map((document) => document.format))].sort()
   const filtered = filterDocuments(documents, { period, format, size })
   const summary = summarizeDocuments(filtered)
@@ -22,11 +19,6 @@ export function DocumentAnalytics({ period }: { period: AnalyticsPeriod }) {
   const average = completed.length ? completed.reduce((sum, document) => sum + (document.processingSeconds ?? 0), 0) / completed.length : null
   const maxSize = Math.max(1, Math.ceil(Math.max(0, ...completed.map((document) => (document.sizeBytes ?? 0) / 1_048_576))))
   const maxSeconds = Math.max(10, Math.ceil(Math.max(0, ...completed.map((document) => document.processingSeconds ?? 0)) / 10) * 10)
-  const filterKey = [period, format, size].join(':')
-  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize))
-  const page = pagination.key === filterKey ? Math.min(pagination.page, pageCount) : 1
-  const offset = (page - 1) * pageSize
-  const visible = filtered.slice(offset, offset + pageSize)
 
   return (
     <section className={styles.documentAnalytics} aria-labelledby="document-analytics-heading">
@@ -49,7 +41,7 @@ export function DocumentAnalytics({ period }: { period: AnalyticsPeriod }) {
         <div className={styles.scatterLegend} aria-label="Форматы на графике">
           {chartFormats.map((item) => <span key={item}><i className={styles.chartDot} data-format={item} aria-hidden="true" />{item}</span>)}
         </div>
-        <div className={styles.scatterChart} role="img" aria-label={'Размер файла и время обработки: ' + completed.length + ' завершённых документов. Точные значения приведены в таблице.'}>
+        <div className={styles.scatterChart} role="img" aria-describedby={completed.length > 0 ? "document-processing-values" : undefined} aria-label={'Размер файла и время обработки: ' + completed.length + ' завершённых документов.'}>
           <span className={styles.plotYAxis}>Время, с</span>
           <div className={styles.scatterArea}>
             {ticks.map((tick) => <div key={tick} className={styles.scatterGrid} style={{ bottom: tick * 100 + '%' }}><span>{numberFormat.format(maxSeconds * tick)}</span></div>)}
@@ -59,24 +51,9 @@ export function DocumentAnalytics({ period }: { period: AnalyticsPeriod }) {
           </div>
           <span className={styles.plotXAxis}>Размер файла, МБ</span>
         </div>
+        <p id="document-processing-values" hidden>{completed.map((document) => document.name + ": " + formatBytes(document.sizeBytes) + ", " + numberFormat.format(document.processingSeconds ?? 0) + " с").join("; ")}</p>
       </section>
 
-      <div className={styles.documentTableWrap}>
-        <table className={styles.documentTable} aria-label="Размер, формат и время обработки документов">
-          <colgroup><col /><col /><col /><col /></colgroup>
-          <thead><tr><th scope="col">Документ</th><th scope="col">Формат</th><th scope="col">Размер</th><th scope="col">Время обработки</th></tr></thead>
-          <tbody>
-            {visible.length === 0 ? <tr><td colSpan={4} className={styles.tableState}>Нет документов с такими параметрами</td></tr> : visible.map((document) => (
-              <tr key={document.id}>
-                <th scope="row">{document.name}<small className={document.status === 'failed' ? styles.statusError : undefined}>{statusLabels[document.status]}</small></th>
-                <td>{document.format}</td><td>{formatBytes(document.sizeBytes)}</td><td>{document.processingSeconds === null ? '—' : numberFormat.format(document.processingSeconds) + ' с'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {filtered.length > 0 && <footer className={styles.tableFooter}><p>Показано {offset + 1}–{Math.min(offset + pageSize, filtered.length)} из {numberFormat.format(filtered.length)}</p><nav className={styles.pagination} aria-label="Страницы документов"><button type="button" aria-label="Предыдущая страница документов" disabled={page === 1} onClick={() => setPagination({ key: filterKey, page: page - 1 })}>←</button><span>Страница {page} из {pageCount}</span><button type="button" aria-label="Следующая страница документов" disabled={page === pageCount} onClick={() => setPagination({ key: filterKey, page: page + 1 })}>→</button></nav></footer>}
-      <p className={styles.footnote}>Время обработки — от начала до завершения работы с файлом, без ожидания в очереди.</p>
     </section>
   )
 }
