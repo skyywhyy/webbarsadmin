@@ -5,7 +5,7 @@ export const technicalRanges = [
 ] as const
 
 export type TechnicalRange = (typeof technicalRanges)[number]['value']
-type Stage = 'queue' | 'preparation' | 'delivery'
+type Stage = 'queue' | 'preparation' | 'search' | 'generation' | 'delivery'
 type WorkloadTokens = {
   input: number
   output: number
@@ -20,25 +20,35 @@ export type TechnicalAnalytics = {
   tokens: { chat: WorkloadTokens; document_import: WorkloadTokens }
   response_time: { sample_count: number; mean_ms: number | null; p95_ms: number | null }
   stages: { stage: Stage; mean_ms: number | null }[]
+  response_breakdown: { sample_count: number; mean_ms: number | null; stages: { stage: Stage; mean_ms: number | null }[] }
   agent_breakdown: { kind: 'model' | 'tool' | 'rag'; name: string; mean_ms: number }[]
   delivery: { answer: DeliveryOutcomes; fallback: DeliveryOutcomes; service: DeliveryOutcomes }
 }
 
 const stageDefinitions = [
-  { stage: 'queue', label: 'Ожидание в очереди', color: '#98adb7' },
-  { stage: 'preparation', label: 'Подготовка ответа', color: '#21343c' },
-  { stage: 'delivery', label: 'Отправка ответа', color: '#64838c' },
+  { stage: 'queue', label: 'Ожидание в очереди', color: '#c5d0d6' },
+  { stage: 'preparation', label: 'Подготовка запроса', color: '#98adb7' },
+  { stage: 'search', label: 'Поиск в базе знаний', color: '#64838c' },
+  { stage: 'generation', label: 'Генерация ответа', color: '#21343c' },
+  { stage: 'delivery', label: 'Отправка ответа', color: '#e0e7eb' },
 ] as const
 
-export const demoRequestCost = 0.84
+export type RequestCost = {
+  currency: 'RUB'
+  closed_count: number
+  priced_count: number
+  total: number | null
+  mean: number | null
+}
 
 export function summarizeTechnicalAnalytics(data: TechnicalAnalytics) {
   const input = data.tokens.chat.input
   const output = data.tokens.chat.output
   const total = input + output
   const samples = data.response_time.sample_count
+  const breakdown = data.response_breakdown
   const measuredStages = stageDefinitions.map((definition) => {
-    const duration = data.stages.find((item) => item.stage === definition.stage)?.mean_ms
+    const duration = breakdown?.stages.find((item) => item.stage === definition.stage)?.mean_ms
     return { ...definition, meanMs: typeof duration === 'number' && Number.isFinite(duration) && duration >= 0 ? duration : null }
   })
   const stagesComplete = measuredStages.every((stage) => stage.meanMs !== null)
@@ -50,7 +60,7 @@ export function summarizeTechnicalAnalytics(data: TechnicalAnalytics) {
     offset += percent ?? 0
     return result
   })
-  return { input, output, total, samples, tokensPerResponse: samples > 0 ? total / samples : null, stages }
+  return { input, output, total, samples, tokensPerResponse: samples > 0 ? total / samples : null, stages, breakdownSamples: breakdown?.sample_count ?? 0, breakdownMeanMs: breakdown?.mean_ms ?? null }
 }
 
 export function formatMetric(value: number | null | undefined, maximumFractionDigits = 0) {
@@ -60,5 +70,5 @@ export function formatMetric(value: number | null | undefined, maximumFractionDi
 }
 
 export function formatMilliseconds(value: number | null | undefined) {
-  return formatMetric(typeof value === 'number' ? value / 1000 : null, value !== null && value !== undefined && value < 1000 ? 3 : 2)
+  return formatMetric(typeof value === 'number' ? value / 1000 : null, value !== null && value !== undefined && value > 0 && value < 1 ? 6 : value !== null && value !== undefined && value < 1000 ? 3 : 2)
 }

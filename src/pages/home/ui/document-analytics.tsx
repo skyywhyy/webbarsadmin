@@ -1,58 +1,102 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { Select } from '@/shared/ui/select'
+import { loadAnalyticsDocuments } from '../model/api'
 import { createDemoDocuments } from '../model/demo-documents'
 import { filterDocuments, formatBytes, summarizeDocuments } from '../model/analytics'
-import type { AnalyticsPeriod, DocumentSizeFilter } from '../model/analytics'
+import type { AnalyticsDocument, AnalyticsPeriod, DocumentSizeFilter } from '../model/analytics'
 import styles from './home-page.module.css'
 
 const numberFormat = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 1 })
-const chartFormats = ['PDF', 'DOCX', 'TXT'] as const
 const ticks = [0, 0.25, 0.5, 0.75, 1]
+const formatGroups = [
+  { label: 'PDF', formats: ['PDF'] },
+  { label: 'DOC / DOCX', formats: ['DOC', 'DOCX'] },
+  { label: 'XLS / XLSX', formats: ['XLS', 'XLSX'] },
+  { label: 'Изображения', formats: ['PNG', 'JPG', 'JPEG', 'GIF', 'WEBP', 'SVG', 'BMP', 'TIFF', 'TIF', 'HEIC', 'AVIF'] },
+  { label: 'Другие', formats: [] },
+]
+const sizeOptions = [
+  { value: 'all', label: 'Любой размер' },
+  { value: 'small', label: 'До 1 МБ' },
+  { value: 'medium', label: '1–5 МБ' },
+  { value: 'large', label: 'Больше 5 МБ' },
+] as const
+type LoadState = { status: 'loading' } | { status: 'error' } | { status: 'ready'; documents: AnalyticsDocument[] }
 
 export function DocumentAnalytics({ period }: { period: AnalyticsPeriod }) {
-  const [documents] = useState(() => createDemoDocuments())
+  const [state, setState] = useState<LoadState>({ status: 'loading' })
+  const [attempt, setAttempt] = useState(0)
+  const [demoDocuments] = useState(() => createDemoDocuments())
   const [format, setFormat] = useState('all')
   const [size, setSize] = useState<DocumentSizeFilter>('all')
-  const formats = [...new Set(documents.map((document) => document.format))].sort()
-  const filtered = filterDocuments(documents, { period, format, size })
-  const summary = summarizeDocuments(filtered)
-  const completed = filtered.filter((document) => document.status === 'succeeded' && document.processingSeconds !== null)
-  const average = completed.length ? completed.reduce((sum, document) => sum + (document.processingSeconds ?? 0), 0) / completed.length : null
-  const maxSize = Math.max(1, Math.ceil(Math.max(0, ...completed.map((document) => (document.sizeBytes ?? 0) / 1_048_576))))
-  const maxSeconds = Math.max(10, Math.ceil(Math.max(0, ...completed.map((document) => document.processingSeconds ?? 0)) / 10) * 10)
+
+  useEffect(() => {
+    const controller = new AbortController()
+    loadAnalyticsDocuments(controller.signal).then((documents) => {
+      if (!controller.signal.aborted) setState({ status: 'ready', documents })
+    }).catch(() => {
+      if (!controller.signal.aborted) setState({ status: 'error' })
+    })
+    return () => controller.abort()
+  }, [attempt])
+
+  const documents = state.status === 'ready' ? state.documents : []
+  const formats = [...new Set([...documents, ...demoDocuments].map((document) => document.format))].sort()
+  const filters = { period, format, size }
+  const filteredDocuments = filterDocuments(documents, filters)
+  const summary = summarizeDocuments(filteredDocuments)
+  const formatCounts = formatGroups.map(() => 0)
+  for (const document of filteredDocuments) {
+    const group = formatGroups.findIndex((item) => item.formats.includes(document.format))
+    formatCounts[group === -1 ? formatGroups.length - 1 : group] += 1
+  }
+  const sizeBytes = summary.count > 0 && summary.knownSizeCount === 0 ? null : summary.sizeBytes
+  const sizeHint = summary.knownSizeCount < summary.count
+    ? 'Размер известен для ' + summary.knownSizeCount + ' из ' + summary.count + ' загрузок'
+    : 'Суммарный размер файлов в выборке'
+  const completedDemo = filterDocuments(demoDocuments, filters).filter((document) => document.status === 'succeeded' && document.processingSeconds !== null)
+  const demoAverage = completedDemo.length ? completedDemo.reduce((sum, document) => sum + (document.processingSeconds ?? 0), 0) / completedDemo.length : null
 
   return (
-    <section className={styles.documentAnalytics} aria-labelledby="document-analytics-heading">
+    <section className={styles.documentAnalytics} aria-labelledby="document-analytics-heading" aria-busy={state.status === 'loading'}>
       <header className={styles.sectionHeader}>
         <div><h2 id="document-analytics-heading">Обработка документов</h2><p className={styles.sectionDescription}>Сравнение времени обработки, размера и формата файла</p></div>
         <div className={styles.filters}>
-          <label>Формат<select value={format} onChange={(event) => setFormat(event.target.value)}><option value="all">Все форматы</option>{formats.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-          <label>Размер<select value={size} onChange={(event) => setSize(event.target.value as DocumentSizeFilter)}><option value="all">Любой размер</option><option value="small">До 1 МБ</option><option value="medium">1–5 МБ</option><option value="large">Больше 5 МБ</option></select></label>
+          <Select label="Формат" value={format} onChange={setFormat} options={[{ value: 'all', label: 'Все форматы' }, ...formats.map((item) => ({ value: item, label: item }))]} />
+          <Select<DocumentSizeFilter> label="Размер" value={size} onChange={setSize} options={sizeOptions} />
         </div>
       </header>
 
-      <dl className={styles.overview}>
+      {state.status === 'loading' && <p className={styles.analyticsLoading} role="status"><span className={styles.loadingText}>Загружаем статистику документов…</span></p>}
+      {state.status === 'error' && <div className={styles.loadError} role="alert"><p>Не удалось загрузить статистику документов. Попробуйте ещё раз.</p><button type="button" onClick={() => { setState({ status: 'loading' }); setAttempt((value) => value + 1) }}>Повторить</button></div>}
+      {state.status === 'ready' && <dl key={`${period}:${format}:${size}`} className={styles.overview}>
         <div><dt>Загрузок документов</dt><dd><span className={styles.overviewValue}>{numberFormat.format(summary.count)}</span><span className={styles.metricHint}>С учётом повторных загрузок и выбранных фильтров</span></dd></div>
-        <div><dt>Объём файлов</dt><dd><span className={styles.overviewValue}>{formatBytes(summary.sizeBytes)}</span><span className={styles.metricHint}>Суммарный размер файлов в выборке</span></dd></div>
-        <div><dt>Среднее время обработки</dt><dd><span className={styles.overviewValue}>{average === null ? '—' : numberFormat.format(average)}<small>с</small></span><span className={styles.metricHint}>По завершённым обработкам</span></dd></div>
-      </dl>
+        <div><dt>Объём файлов</dt><dd><span className={styles.overviewValue}>{formatBytes(sizeBytes)}</span><span className={styles.metricHint}>{sizeHint}</span></dd></div>
+        <div><dt>Среднее время обработки</dt><dd><span className={styles.overviewValue}>{demoAverage === null ? '—' : numberFormat.format(demoAverage)}<small>с</small></span></dd></div>
+      </dl>}
 
-      <section className={styles.comparison} aria-labelledby="document-comparison-heading">
-        <h3 id="document-comparison-heading">Размер файла и время обработки</h3>
-        <div className={styles.scatterLegend} aria-label="Форматы на графике">
-          {chartFormats.map((item) => <span key={item}><i className={styles.chartDot} data-format={item} aria-hidden="true" />{item}</span>)}
-        </div>
-        <div className={styles.scatterChart} role="img" aria-describedby={completed.length > 0 ? "document-processing-values" : undefined} aria-label={'Размер файла и время обработки: ' + completed.length + ' завершённых документов.'}>
-          <span className={styles.plotYAxis}>Время, с</span>
-          <div className={styles.scatterArea}>
-            {ticks.map((tick) => <div key={tick} className={styles.scatterGrid} style={{ bottom: tick * 100 + '%' }}><span>{numberFormat.format(maxSeconds * tick)}</span></div>)}
-            {ticks.map((tick) => <span key={tick} className={styles.scatterXTick} style={{ left: tick * 100 + '%' }}>{numberFormat.format(maxSize * tick)}</span>)}
-            {completed.map((document) => <span key={document.id} className={styles.chartPoint} data-format={document.format} title={document.name + ': ' + formatBytes(document.sizeBytes) + ', ' + numberFormat.format(document.processingSeconds ?? 0) + ' с'} style={{ left: (document.sizeBytes ?? 0) / 1_048_576 / maxSize * 100 + '%', bottom: (document.processingSeconds ?? 0) / maxSeconds * 100 + '%' }} />)}
-            {completed.length === 0 && <p className={styles.scatterEmpty}>Нет завершённых обработок с такими параметрами</p>}
+      {state.status === 'ready' && <section key={`formats:${period}:${format}:${size}`} className={styles.comparison} aria-labelledby="document-formats-heading">
+        <h3 id="document-formats-heading">Загруженные файлы по форматам</h3>
+        <p className={styles.sectionDescription}>Доля от всех загрузок в выбранной выборке, включая повторные загрузки</p>
+        {summary.count === 0 ? <p className={styles.analyticsLoading}>Нет загрузок с выбранными фильтрами</p> : <>
+          <div className={styles.formatChart} role="img" aria-label={formatGroups.map((group, index) => group.label + ': ' + numberFormat.format(formatCounts[index] / summary.count * 100) + ' %, файлов: ' + formatCounts[index]).join('; ')}>
+            <div className={styles.formatPlot}>
+              {ticks.map((tick) => <div key={tick} className={styles.formatGrid} style={{ bottom: tick * 100 + '%' }}><span>{tick * 100}%</span></div>)}
+              <div className={styles.formatColumns}>
+                {formatGroups.map((group, index) => {
+                  const percent = formatCounts[index] / summary.count * 100
+                  return <div key={group.label} className={styles.formatColumn}>
+                    <div className={styles.formatBar} style={{ height: percent + '%' }} title={group.label + ': ' + formatCounts[index] + ' из ' + summary.count}>
+                      <span className={styles.formatPercent}>{numberFormat.format(percent)}%</span>
+                    </div>
+                    <span className={styles.formatName}>{group.label}</span>
+                  </div>
+                })}
+              </div>
+            </div>
           </div>
-          <span className={styles.plotXAxis}>Размер файла, МБ</span>
-        </div>
-        <p id="document-processing-values" hidden>{completed.map((document) => document.name + ": " + formatBytes(document.sizeBytes) + ", " + numberFormat.format(document.processingSeconds ?? 0) + " с").join("; ")}</p>
-      </section>
+        </>}
+      </section>}
 
     </section>
   )

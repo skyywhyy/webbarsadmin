@@ -1,0 +1,140 @@
+.field {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+  color: #182125;
+  font: 400 var(--text-body) / var(--leading-body) var(--font-ui);
+}
+
+.field[data-open='true'] {
+  z-index: 5;
+}
+
+.label {
+  color: #4e5f65;
+  font-size: var(--text-small);
+  line-height: var(--leading-small);
+}
+
+.trigger {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  min-height: 44px;
+  padding: 9px 12px;
+  border: 1px solid #d8dfe2;
+  border-radius: 6px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.trigger:hover:not(:disabled) {
+  border-color: #98adb7;
+}
+
+.trigger[aria-expanded='true'],
+.trigger:focus-visible {
+  outline: none;
+  border-color: #64838c;
+  box-shadow: 0 0 0 3px #64838c1a;
+}
+
+.trigger:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icon {
+  display: flex;
+  flex: none;
+  color: #4d5c62;
+}
+
+.chevron {
+  flex: none;
+  color: #6b7c83;
+  transition: transform 250ms cubic-bezier(0.2, 0, 0.2, 1);
+}
+
+.trigger[aria-expanded='true'] .chevron {
+  transform: rotate(180deg);
+}
+
+.list {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  left: 0;
+  box-sizing: border-box;
+  max-height: 260px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 6px;
+  border: 1px solid #d8dfe2;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 6px 20px #1117191a;
+  animation: selectEnter 450ms cubic-bezier(0.2, 0, 0.2, 1);
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.option[aria-selected='true'] {
+  color: #21343c;
+  font-weight: 500;
+}
+
+.option[data-active='true'] {
+  background: #eef2f4;
+}
+
+.check {
+  flex: none;
+  color: #4e5f65;
+}
+
+@keyframes selectEnter {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trigger,
+  .chevron {
+    transition: none;
+  }
+
+  .list {
+    animation: none;
+  }
+}
