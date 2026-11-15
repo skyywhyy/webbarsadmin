@@ -180,6 +180,10 @@
   max-width: 100%;
 }
 
+.formatFilter > button {
+  border-color: #b1c0c8;
+}
+
 .emptyState button {
   justify-self: center;
   margin-top: 8px;
