@@ -1,7 +1,11 @@
 import { request } from '@/shared/api/client'
 import { toAnalyticsDocument } from './analytics'
-import type { AnalyticsDocument, DocumentJob } from './analytics'
+import type { AnalyticsDocument, DocumentAnalyticsData, DocumentJob } from './analytics'
 import type { RequestCost, TechnicalAnalytics, TechnicalRange } from './technical-analytics'
+
+export function loadDocumentAnalytics(signal: AbortSignal) {
+  return request<DocumentAnalyticsData>('/analytics/documents', { signal })
+}
 
 type DocumentPage = { items: DocumentJob[]; total: number }
 

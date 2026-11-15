@@ -30,7 +30,7 @@ async function scenario(data) {
   const state = []
   let cursor = 0, effectStarted = false
   const jsx = (type, props) => ({ type, props: props || {} })
-  const page = compile('src/pages/home/ui/document-analytics.tsx', {
+  const page = compile('src/pages/home/ui/document-format-chart.tsx', {
     react: {
       useState(initial) {
         const index = cursor++
@@ -43,10 +43,9 @@ async function scenario(data) {
     '@/shared/ui/select': { Select: 'select' },
     '../model/api': { loadAnalyticsDocuments: async () => data },
     '../model/analytics': model,
-    '../model/demo-documents': { createDemoDocuments: () => [{ ...model.toAnalyticsDocument(job('PDF', 'demo')), processingSeconds: 10 }] },
     './home-page.module.css': { __esModule: true, default: new Proxy({}, { get: (_, key) => key }) },
   })
-  function render(period = 'all') { cursor = 0; return nodes(page.DocumentAnalytics({ period })) }
+  function render() { cursor = 0; return nodes(page.DocumentFormatChart()) }
   render(); await settle()
   return { render }
 }
