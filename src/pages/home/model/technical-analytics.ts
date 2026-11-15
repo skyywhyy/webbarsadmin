@@ -17,7 +17,7 @@ export type TechnicalAnalytics = {
   range: TechnicalRange
   from_at: string
   to_at: string
-  tokens: { chat: WorkloadTokens; document_import: WorkloadTokens }
+  tokens: { chat: WorkloadTokens }
   response_time: { sample_count: number; mean_ms: number | null; p95_ms: number | null }
   stages: { stage: Stage; mean_ms: number | null }[]
   response_breakdown: { sample_count: number; mean_ms: number | null; stages: { stage: Stage; mean_ms: number | null }[] }

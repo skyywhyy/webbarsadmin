@@ -2,17 +2,12 @@ import { useEffect, useState } from 'react'
 import { Select } from '@/shared/ui/select'
 import { loadAnalyticsDocuments } from '../model/api'
 import { createDemoDocuments } from '../model/demo-documents'
-import { filterDocuments, formatBytes, summarizeDocuments } from '../model/analytics'
+import { countDocumentFormats, filterDocuments, formatBytes, summarizeDocuments } from '../model/analytics'
 import type { AnalyticsDocument, AnalyticsPeriod, DocumentSizeFilter } from '../model/analytics'
 import styles from './home-page.module.css'
 
 const numberFormat = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 1 })
 const ticks = [0, 0.25, 0.5, 0.75, 1]
-const formatGroups = [
-  { label: 'PDF', formats: ['PDF'] },
-  { label: 'DOC / DOCX', formats: ['DOC', 'DOCX'] },
-  { label: 'Другие', formats: [] },
-]
 const sizeOptions = [
   { value: 'all', label: 'Любой размер' },
   { value: 'small', label: 'До 1 МБ' },
@@ -39,15 +34,11 @@ export function DocumentAnalytics({ period }: { period: AnalyticsPeriod }) {
   }, [attempt])
 
   const documents = state.status === 'ready' ? state.documents : []
-  const formats = [...new Set([...documents, ...demoDocuments].map((document) => document.format))].sort()
+  const formats = [...new Set(documents.map((document) => document.format))].sort()
   const filters = { period, format, size }
   const filteredDocuments = filterDocuments(documents, filters)
   const summary = summarizeDocuments(filteredDocuments)
-  const formatCounts = formatGroups.map(() => 0)
-  for (const document of filteredDocuments) {
-    const group = formatGroups.findIndex((item) => item.formats.includes(document.format))
-    formatCounts[group === -1 ? formatGroups.length - 1 : group] += 1
-  }
+  const formatGroups = countDocumentFormats(filteredDocuments)
   const sizeBytes = summary.count > 0 && summary.knownSizeCount === 0 ? null : summary.sizeBytes
   const sizeHint = summary.knownSizeCount < summary.count
     ? 'Размер известен для ' + summary.knownSizeCount + ' из ' + summary.count + ' загрузок'
@@ -77,14 +68,14 @@ export function DocumentAnalytics({ period }: { period: AnalyticsPeriod }) {
         <h3 id="document-formats-heading">Загруженные файлы по форматам</h3>
         <p className={styles.sectionDescription}>Доля от всех загрузок в выбранной выборке, включая повторные загрузки</p>
         {summary.count === 0 ? <p className={styles.analyticsLoading}>Нет загрузок с выбранными фильтрами</p> : <>
-          <div className={styles.formatChart} role="img" aria-label={formatGroups.map((group, index) => group.label + ': ' + numberFormat.format(formatCounts[index] / summary.count * 100) + ' %, файлов: ' + formatCounts[index]).join('; ')}>
-            <div className={styles.formatPlot}>
+          <div className={styles.formatChart} tabIndex={0} role="img" aria-label={formatGroups.map((group) => group.label + ': ' + numberFormat.format(group.count / summary.count * 100) + ' %, файлов: ' + group.count).join('; ')}>
+            <div className={styles.formatPlot} style={{ minWidth: formatGroups.length * 80 - 16 }}>
               {ticks.map((tick) => <div key={tick} className={styles.formatGrid} style={{ bottom: tick * 100 + '%' }}><span>{tick * 100}%</span></div>)}
-              <div className={styles.formatColumns}>
-                {formatGroups.map((group, index) => {
-                  const percent = formatCounts[index] / summary.count * 100
+              <div className={styles.formatColumns} style={{ gridTemplateColumns: `repeat(${formatGroups.length}, minmax(0, 1fr))` }}>
+                {formatGroups.map((group) => {
+                  const percent = group.count / summary.count * 100
                   return <div key={group.label} className={styles.formatColumn}>
-                    <div className={styles.formatBar} style={{ height: percent + '%' }} title={group.label + ': ' + formatCounts[index] + ' из ' + summary.count}>
+                    <div className={styles.formatBar} style={{ height: percent + '%' }} title={group.label + ': ' + group.count + ' из ' + summary.count}>
                       <span className={styles.formatPercent}>{numberFormat.format(percent)}%</span>
                     </div>
                     <span className={styles.formatName}>{group.label}</span>
