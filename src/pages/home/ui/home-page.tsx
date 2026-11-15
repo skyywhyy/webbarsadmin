@@ -3,6 +3,7 @@ import type { KeyboardEvent } from 'react'
 import { Select } from '@/shared/ui/select'
 import { DocumentAnalytics } from './document-analytics'
 import { RequestAnalytics } from './request-analytics'
+import { createDocumentPeriod } from '../model/analytics'
 import { technicalRanges } from '../model/technical-analytics'
 import type { TechnicalRange } from '../model/technical-analytics'
 import styles from './home-page.module.css'
@@ -18,6 +19,7 @@ const calendarIcon = (
 export function HomePage() {
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]['id']>('requests')
   const [range, setRange] = useState<TechnicalRange>('24h')
+  const [documentPeriod, setDocumentPeriod] = useState(() => createDocumentPeriod('24h'))
 
   function switchTab(event: KeyboardEvent<HTMLButtonElement>, index: number) {
     let next: number
@@ -38,7 +40,7 @@ export function HomePage() {
         {activeTab === 'requests' ? (
           <Select<TechnicalRange> key="requests" className={styles.period} label="Период" value={range} onChange={setRange} options={technicalRanges} icon={calendarIcon} />
         ) : (
-          <p className={styles.documentPeriod}><span aria-hidden="true">{calendarIcon}</span>За всё время</p>
+          <Select<TechnicalRange> key="documents" className={styles.period} label="Период" value={documentPeriod.range} onChange={(value) => setDocumentPeriod(createDocumentPeriod(value))} options={technicalRanges} icon={calendarIcon} />
         )}
       </header>
 
@@ -55,7 +57,7 @@ export function HomePage() {
           <RequestAnalytics key={range} range={range} />
         </div>
       ) : (
-        <div key="documents" className={styles.tabPanel} role="tabpanel" id="analytics-panel-documents" aria-labelledby="analytics-tab-documents"><DocumentAnalytics /></div>
+        <div key="documents" className={styles.tabPanel} role="tabpanel" id="analytics-panel-documents" aria-labelledby="analytics-tab-documents"><DocumentAnalytics period={documentPeriod} /></div>
       )}
     </main>
   )

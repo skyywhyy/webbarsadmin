@@ -26,7 +26,8 @@ function nodes(tree) {
   if (Array.isArray(tree)) return tree.flatMap(nodes)
   return tree && typeof tree === 'object' ? [tree, ...nodes(tree.props.children)] : []
 }
-async function scenario(data) {
+async function scenario(data, period) {
+  let currentPeriod = period, loads = 0
   const state = []
   let cursor = 0, effectStarted = false
   const jsx = (type, props) => ({ type, props: props || {} })
@@ -41,13 +42,13 @@ async function scenario(data) {
     },
     'react/jsx-runtime': { jsx, jsxs: jsx },
     '@/shared/ui/select': { Select: 'select' },
-    '../model/api': { loadAnalyticsDocuments: async () => data },
+    '../model/api': { loadAnalyticsDocuments: async () => { loads++; return data } },
     '../model/analytics': model,
     './home-page.module.css': { __esModule: true, default: new Proxy({}, { get: (_, key) => key }) },
   })
-  function render() { cursor = 0; return nodes(page.DocumentFormatChart()) }
+  function render() { cursor = 0; return nodes(page.DocumentFormatChart({ period: currentPeriod })) }
   render(); await settle()
-  return { render }
+  return { render, setPeriod(next) { currentPeriod = next }, get loads() { return loads } }
 }
 async function main() {
   assert.deepEqual(JSON.parse(JSON.stringify(model.countDocumentFormats(documents))), [
@@ -55,6 +56,26 @@ async function main() {
     { label: 'MD', count: 1 }, { label: 'PDF', count: 2 }, { label: 'RTF', count: 1 }, { label: 'TXT', count: 1 },
   ], 'Every real format needs its own count, including future formats and separate DOC/DOCX')
   assert.equal(model.countDocumentFormats([]).length, 0)
+  const now = Date.parse('2026-11-16T12:00:00Z')
+  const dated = [0, 30 * 60_000, 3_600_000, 86_400_000, 7 * 86_400_000, 7 * 86_400_000 + 1, -1, null].map((age, index) => ({
+    ...documents[0], id: String(index), createdAt: age === null ? null : now - age,
+  }))
+  for (const [range, expected, milliseconds] of [['1h', 3, 3_600_000], ['24h', 4, 86_400_000], ['7d', 5, 7 * 86_400_000]]) {
+    const period = model.createDocumentPeriod(range, now)
+    assert.equal(period.toAt - period.fromAt, milliseconds)
+    assert.equal(model.filterDocuments(dated, { format: 'all', size: 'all', period }).length, expected, range + ' must include its boundaries and exclude future or unknown dates')
+  }
+  assert.equal(model.filterDocuments(dated, { format: 'all', size: 'all' }).length, 8)
+  const recent = { ...documents[0], createdAt: now - 30 * 60_000 }
+  const older = { ...documents[3], createdAt: now - 2 * 3_600_000 }
+  const periodChart = await scenario([recent, older], model.createDocumentPeriod('1h', now))
+  assert.deepEqual(periodChart.render().filter(node => node.props.className === 'formatName').map(node => node.props.children), ['PDF'])
+  periodChart.setPeriod(model.createDocumentPeriod('24h', now))
+  assert.deepEqual(periodChart.render().filter(node => node.props.className === 'formatName').map(node => node.props.children), ['DOCX', 'PDF'])
+  periodChart.render().find(node => node.type === 'select' && node.props.label === 'Формат').props.onChange('DOCX')
+  periodChart.setPeriod(model.createDocumentPeriod('1h', now))
+  assert.ok(!periodChart.render().some(node => node.props.className === 'formatBar'), 'Period must combine with existing format filters and support an empty result')
+  assert.equal(periodChart.loads, 1, 'Changing period must reuse loaded history')
   const page = await scenario(documents)
   let rendered = page.render()
   const columns = rendered.filter(node => node.props.className === 'formatName')
