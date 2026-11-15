@@ -57,6 +57,14 @@ export function summarizeDocuments(documents: AnalyticsDocument[]) {
   }), { count: 0, knownSizeCount: 0, sizeBytes: 0 })
 }
 
+export function countDocumentFormats(documents: AnalyticsDocument[]) {
+  const counts = new Map<string, number>()
+  for (const document of documents) {
+    counts.set(document.format, (counts.get(document.format) ?? 0) + 1)
+  }
+  return [...counts].sort(([left], [right]) => left.localeCompare(right, 'ru')).map(([label, count]) => ({ label, count }))
+}
+
 const numberFormat = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 1 })
 
 export function formatBytes(bytes: number | null) {
